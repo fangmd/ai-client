@@ -1,13 +1,48 @@
+@import 'tailwindcss';
 @import './base.css';
 
+@theme {
+  --color-background: oklch(0.15 0 0);
+  --color-foreground: oklch(0.98 0 0);
+
+  --color-card: oklch(0.2 0 0);
+  --color-card-foreground: oklch(0.98 0 0);
+
+  --color-popover: oklch(0.2 0 0);
+  --color-popover-foreground: oklch(0.98 0 0);
+
+  --color-primary: oklch(0.5 0.2 250);
+  --color-primary-foreground: oklch(0.98 0 0);
+
+  --color-secondary: oklch(0.25 0 0);
+  --color-secondary-foreground: oklch(0.98 0 0);
+
+  --color-muted: oklch(0.25 0 0);
+  --color-muted-foreground: oklch(0.65 0 0);
+
+  --color-accent: oklch(0.25 0 0);
+  --color-accent-foreground: oklch(0.98 0 0);
+
+  --color-destructive: oklch(0.55 0.22 25);
+  --color-destructive-foreground: oklch(0.98 0 0);
+
+  --color-border: oklch(0.3 0 0);
+  --color-input: oklch(0.3 0 0);
+  --color-ring: oklch(0.5 0.2 250);
+
+  --radius: 0.5rem;
+}
+
+* {
+  border-color: var(--color-border);
+}
+
 body {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  background-image: url('./wavy-lines.svg');
-  background-size: cover;
-  user-select: none;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-feature-settings:
+    'rlig' 1,
+    'calt' 1;
 }
 
 code {
