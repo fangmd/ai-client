@@ -73,49 +73,47 @@ export const Home: React.FC = () => {
   }
 
   return (
-    <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
-      <div className="min-h-screen bg-background">
-        <div className="min-h-screen flex flex-col max-h-screen mx-auto w-full">
-          <div
-            className="flex-1 flex flex-col w-full overflow-y-auto min-h-full"
-            ref={scrollContainerRef}
-          >
-            <div className="thread-content-max-width mx-auto flex-1 w-full px-4">
-              {messages.map((message) => (
-                <MessageItem key={message.id} message={message} />
-              ))}
+    <div className="min-h-screen bg-background w-screen">
+      <div className="min-h-screen flex flex-col max-h-screen mx-auto w-full">
+        <div
+          className="flex-1 flex flex-col w-full overflow-y-auto min-h-full"
+          ref={scrollContainerRef}
+        >
+          <div className="thread-content-max-width mx-auto flex-1 w-full px-4">
+            {messages.map((message) => (
+              <MessageItem key={message.id} message={message} />
+            ))}
 
-              {status === 'submitted' && (
-                <div className="Msg__root flex pt-4">
-                  <div className={clsx('whitespace-pre-wrap msg-content rounded-md ')}>
-                    <LoadingAnimation />
-                  </div>
+            {status === 'submitted' && (
+              <div className="Msg__root flex pt-4">
+                <div className={clsx('whitespace-pre-wrap msg-content rounded-md ')}>
+                  <LoadingAnimation />
                 </div>
-              )}
-              {status === 'error' && <div className="text-[16px] font-[500] ml-110">error</div>}
-              <div className="" ref={messagesEndRef} />
-              <div className="h-[30px] w-1 flex-shrink-0"></div>
-            </div>
-
-            <div className="thread-content-max-width mx-auto w-full sticky bottom-0 left-0 right-0">
-              <div className="py-4 px-8 bg-background">
-                <ChatInput
-                  sendDisabled={status === 'submitted'}
-                  resetChat={() => {
-                    resetChat()
-                  }}
-                  onSend={(content: string) => {
-                    if (!content) {
-                      return
-                    }
-                    handleSendMessage(content)
-                  }}
-                />
               </div>
+            )}
+            {status === 'error' && <div className="">error</div>}
+            <div className="" ref={messagesEndRef} />
+            <div className="h-[30px] w-1 shrink-0"></div>
+          </div>
+
+          <div className="thread-content-max-width mx-auto w-full sticky bottom-0 left-0 right-0">
+            <div className="py-4 px-8 bg-background">
+              <ChatInput
+                sendDisabled={status === 'submitted'}
+                resetChat={() => {
+                  resetChat()
+                }}
+                onSend={(content: string) => {
+                  if (!content) {
+                    return
+                  }
+                  handleSendMessage(content)
+                }}
+              />
             </div>
           </div>
         </div>
       </div>
-    </ThemeProvider>
+    </div>
   )
 }
