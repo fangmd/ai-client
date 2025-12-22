@@ -1,0 +1,85 @@
+---
+description: 数据库使用规则，基于 Repository 模式
+globs: 
+alwaysApply: true
+---
+
+# 数据库使用规则
+
+## Repository 层规范
+
+### 文件位置
+- Repository 文件统一放在 `src/main/repository/` 目录
+- 每个模型一个文件，命名格式：`{model-name}.ts`
+- 在 `src/main/repository/index.ts` 中统一导出
+
+### 导入规范
+```typescript
+import { prisma } from '@/main/common/db/prisma'
+import type { Prisma } from '@prisma/client'
+import { generateUUID } from '@/common/snowflake'
+```
+
+### 类型定义
+- 使用 Prisma 类型：`Prisma.{Model}CreateInput` 和 `Prisma.{Model}UpdateInput`
+- 导出类型别名：`Create{Model}Data` 和 `Update{Model}Data`
+- 创建函数参数排除 `id`：`Omit<Create{Model}Data, 'id'>`
+
+### 函数命名规范
+- `create{Model}` - 创建
+- `get{Model}ById` - 根据 ID 查询
+- `getAll{Model}s` - 查询所有
+- `get{Model}By{Field}` - 根据字段查询
+- `update{Model}` - 更新
+- `delete{Model}` - 删除
+- `set{Model}{Action}` - 设置操作（如 `setDefaultAiProvider`）
+- `has{Model}` - 检查存在性
+
+### ID 生成
+- 创建时使用 `generateUUID().valueOf()` 生成 ID
+- 类型为 `bigint`
+
+### 事务处理
+- 复杂操作使用 `prisma.$transaction`
+- 事务内使用 `tx` 代替 `prisma`
+
+### 查询排序
+- 列表查询默认按 `createdAt: 'desc'` 排序
+
+### 注释规范
+- 每个函数添加 JSDoc 注释，说明功能
+- 复杂逻辑添加行内注释
+
+## 示例
+
+```typescript
+import { prisma } from '@/main/common/db/prisma'
+import type { Prisma } from '@prisma/client'
+import { generateUUID } from '@/common/snowflake'
+
+export type CreateModelData = Prisma.ModelCreateInput
+export type UpdateModelData = Prisma.ModelUpdateInput
+
+export async function createModel(data: Omit<CreateModelData, 'id'>) {
+  return prisma.model.create({
+    data: {
+      ...data,
+      id: generateUUID().valueOf()
+    }
+  })
+}
+
+export async function getModelById(id: bigint) {
+  return prisma.model.findUnique({
+    where: { id }
+  })
+}
+
+export async function getAllModels() {
+  return prisma.model.findMany({
+    orderBy: {
+      createdAt: 'desc'
+    }
+  })
+}
+```
