@@ -7,6 +7,7 @@ import {
   setDefaultAiProvider
 } from '../repository/ai-provider'
 import type { CreateAiProviderData } from '../repository/ai-provider'
+import { logError, logInfo } from '../utils'
 
 /**
  * AI Provider Handler
@@ -21,12 +22,12 @@ export class AIProviderHandler {
     ipcMain.handle(IPC_CHANNELS.aiProvider.create, async (_event, data: CreateAiProviderData) => {
       try {
         const provider = await createAiProvider(data)
-        
+
         // 如果设置为默认，则设置默认状态
         if (data.isDefault) {
           await setDefaultAiProvider(provider.id)
         }
-        
+
         const response: IPCResponse = {
           code: 0,
           data: provider,
@@ -51,12 +52,14 @@ export class AIProviderHandler {
           data: provider,
           msg: 'success'
         }
+        logInfo('【IPC Handler】aiProvider:getDefault success, response:', response)
         return response
       } catch (error) {
         const response: IPCResponse = {
           code: -1,
           msg: error instanceof Error ? error.message : 'Unknown error'
         }
+        logError('【IPC Handler】aiProvider:getDefault error, response:', response)
         return response
       }
     })
