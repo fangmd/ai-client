@@ -16,7 +16,7 @@ alwaysApply: true
 
 ### 1. 通道命名
 - 格式：`模块名:操作名` (kebab-case)
-- 位置：`src/preload/channels.ts`
+- 位置：`src/common/constants/ipc.ts`
 - 必须使用 `IPC_CHANNELS` 常量，禁止硬编码字符串
 - 示例：`IPC_CHANNELS.test.ping` 而不是 `'test:ping'`
 
@@ -55,7 +55,7 @@ alwaysApply: true
 ### Handler 实现模板
 ```typescript
 import { ipcMain } from 'electron'
-import { IPC_CHANNELS } from '../../preload/channels'
+import { IPC_CHANNELS } from '../../common/constants'
 import type { IPCResponse } from '../../preload/types'
 
 export class XxxHandler {
@@ -108,7 +108,7 @@ const unsubscribe = window.electron.ipcRenderer.on(
 
 ## 新增 IPC 功能步骤
 
-1. 在 `src/preload/channels.ts` 添加通道常量
+1. 在 `src/common/constants/ipc.ts` 添加通道常量
 2. 在 `src/preload/types.ts` 添加类型接口
 3. 创建 `src/main/handlers/xxx-handler.ts` 实现 Handler
 4. 在 `src/main/handlers/index.ts` 注册 Handler
