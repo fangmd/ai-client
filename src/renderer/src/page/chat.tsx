@@ -19,10 +19,6 @@ export const Chat: React.FC<ChatProps> = ({ aiConfig, loadingProvider, hasConfig
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const isNearBottomRef = useRef(true)
 
-  useEffect(() => {
-    document.body.style.setProperty('--spacing-custom', `0.25em`)
-  }, [])
-
   // 检查是否在底部附近（距离底部100px内）
   const checkIfNearBottom = () => {
     const container = scrollContainerRef.current

@@ -14,8 +14,7 @@ import {
   SidebarProvider,
   SidebarTrigger
 } from '@renderer/components/ui/sidebar'
-import { Settings } from '@renderer/components/Settings'
-import { Settings as SettingsIcon, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { useChatStore } from '@renderer/stores/chatStore'
 import { AddAiModelDialog } from '@renderer/components/AddAiModelDialog'
 import { Chat } from '@renderer/page/chat'
@@ -26,7 +25,6 @@ import { IPC_CHANNELS, SUCCESS_CODE } from '@/common/constants/ipc'
 
 export const Home: React.FC = () => {
   const config = useChatStore((state) => state.config)
-  const [settingsOpen, setSettingsOpen] = useState(false)
   const [addModelOpen, setAddModelOpen] = useState(false)
   const [defaultProvider, setDefaultProvider] = useState<AIConfig | null>(null)
   const [loadingProvider, setLoadingProvider] = useState(true)
@@ -102,10 +100,17 @@ export const Home: React.FC = () => {
                       <span>添加 AI Model</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+            <SidebarGroup>
+              <SidebarGroupLabel>对话</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
                   <SidebarMenuItem>
-                    <SidebarMenuButton onClick={() => setSettingsOpen(true)} tooltip="设置">
-                      <SettingsIcon />
-                      <span>设置</span>
+                    <SidebarMenuButton onClick={() => {}} tooltip="添加对话">
+                      <Plus />
+                      <span>添加对话</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 </SidebarMenu>
@@ -114,11 +119,8 @@ export const Home: React.FC = () => {
           </SidebarContent>
           <SidebarFooter />
         </Sidebar>
-        <SidebarInset>
-          <Chat aiConfig={aiConfig} loadingProvider={loadingProvider} hasConfig={hasConfig} />
-        </SidebarInset>
+        <Chat aiConfig={aiConfig} loadingProvider={loadingProvider} hasConfig={hasConfig} />
       </div>
-      <Settings open={settingsOpen} onOpenChange={setSettingsOpen} />
       <AddAiModelDialog
         open={addModelOpen}
         onOpenChange={setAddModelOpen}
