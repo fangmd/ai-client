@@ -1,4 +1,4 @@
-import type { Message, AIConfig } from '@renderer/types/chat'
+import type { Message, AIConfig } from '@/types/chat'
 
 export interface StreamOptions {
   onChunk?: (chunk: string) => void

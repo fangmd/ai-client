@@ -1,0 +1,123 @@
+---
+description: Electron IPC 调用架构规范，定义三层架构（Preload/Main/Renderer）的通信标准，包括通道命名、响应格式、Handler 实现、文件命名等规范，确保 IPC 调用的类型安全和代码一致性
+globs: 
+alwaysApply: true
+---
+# IPC 调用架构规范
+
+## 架构原则
+
+本项目使用三层 IPC 架构：
+- **Preload 层** (`src/preload/`): 暴露 Electron API 和通道常量
+- **Main 层** (`src/main/handlers/`): Handler 类处理 IPC 请求
+- **Renderer 层**: 直接使用 `window.electron.ipcRenderer`
+
+## 核心规范
+
+### 1. 通道命名
+- 格式：`模块名:操作名` (kebab-case)
+- 位置：`src/preload/channels.ts`
+- 必须使用 `IPC_CHANNELS` 常量，禁止硬编码字符串
+- 示例：`IPC_CHANNELS.test.ping` 而不是 `'test:ping'`
+
+### 2. 响应格式
+- 统一使用 `IPCResponse<T>` 接口
+- 格式：`{ code: number, data?: T, msg: string }`
+- `code: 0` 表示成功，`code: -1` 表示失败
+- 位置：`src/preload/types.ts`
+
+### 3. Handler 实现
+- 文件命名：`xxx-handler.ts` (kebab-case)
+- 使用静态类方法：`static register()` 和 `static unregister()`
+- 必须使用 try-catch 包裹，返回标准 `IPCResponse` 格式
+- 必须从 `IPC_CHANNELS` 导入通道常量
+- 成功响应：`{ code: 0, data: result, msg: 'success' }`
+- 错误响应：`{ code: -1, msg: error.message }`
+
+### 4. Handler 注册
+- 统一在 `src/main/handlers/index.ts` 中注册
+- 使用 `registerHandlers()` 函数统一注册所有 handlers
+
+### 5. Renderer 调用
+- 直接使用 `window.electron.ipcRenderer.send()` 和 `window.electron.ipcRenderer.on()`
+- 通过 `window.api.channels` 获取通道名称
+- 必须导入 `IPCResponse` 类型
+- 检查 `response.code === 0` 判断成功
+- 必须调用 `unsubscribe()` 取消监听
+- 禁止硬编码通道名称字符串
+
+### 6. 文件命名
+- 统一使用 kebab-case：`xxx-handler.ts`
+- 禁止使用 camelCase 或 snake_case
+
+## 代码示例
+
+### Handler 实现模板
+```typescript
+import { ipcMain } from 'electron'
+import { IPC_CHANNELS } from '../../preload/channels'
+import type { IPCResponse } from '../../preload/types'
+
+export class XxxHandler {
+  static register(): void {
+    ipcMain.on(IPC_CHANNELS.xxx.action, (event) => {
+      try {
+        const response: IPCResponse<DataType> = {
+          code: 0,
+          data: result,
+          msg: 'success'
+        }
+        event.reply(IPC_CHANNELS.xxx.response, response)
+      } catch (error) {
+        const response: IPCResponse = {
+          code: -1,
+          msg: error instanceof Error ? error.message : 'Unknown error'
+        }
+        event.reply(IPC_CHANNELS.xxx.response, response)
+      }
+    })
+  }
+
+  static unregister(): void {
+    ipcMain.removeAllListeners(IPC_CHANNELS.xxx.action)
+  }
+}
+```
+
+### Renderer 调用模板
+```typescript
+import type { IPCResponse } from '@/preload/types'
+
+// 发送请求
+window.electron.ipcRenderer.send(window.api.channels.test.ping)
+
+// 监听响应
+const unsubscribe = window.electron.ipcRenderer.on(
+  window.api.channels.test.pong,
+  (_event, response: IPCResponse<DataType>) => {
+    if (response.code === SUCCESS_CODE) {
+      // 成功处理
+    } else {
+      // 错误处理
+      console.error(response.msg)
+    }
+    unsubscribe()
+  }
+)
+```
+
+## 新增 IPC 功能步骤
+
+1. 在 `src/preload/channels.ts` 添加通道常量
+2. 在 `src/preload/types.ts` 添加类型接口
+3. 创建 `src/main/handlers/xxx-handler.ts` 实现 Handler
+4. 在 `src/main/handlers/index.ts` 注册 Handler
+5. 在 renderer 中使用 `window.electron.ipcRenderer` 调用
+
+## 禁止事项
+
+- ❌ 禁止硬编码通道名称字符串
+- ❌ 禁止直接使用 `window.electron.ipcRenderer.send('test:ping')`
+- ❌ 禁止在 Handler 中不使用 try-catch
+- ❌ 禁止返回非标准响应格式
+- ❌ 禁止使用 camelCase 或 snake_case 命名文件

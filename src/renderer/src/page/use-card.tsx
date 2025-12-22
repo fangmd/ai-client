@@ -79,7 +79,7 @@ export const useCard = ({
         body: JSON.stringify(data),
         signal: abortControllerRef.current.signal // 添加取消信号
       })
-      const reader = response.body?.getReader() // 拿到“水管龙头”
+      const reader = response.body?.getReader()
 
       const newMsg: Message = {
         id: `${generateMessageId()}-2`,

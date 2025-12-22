@@ -5,7 +5,6 @@ import { useEffect, useRef } from 'react'
 import { MessageItem } from '@renderer/chat/message-item'
 import '@renderer/assets/chat.css'
 import { ChatInput } from '@renderer/chat/chat-input'
-import { ThemeProvider } from '@renderer/components/theme-provider'
 
 // 卡片生成
 const API_URL =
