@@ -1,5 +1,6 @@
 import { prisma } from '@/main/common/db/prisma'
 import type { Prisma } from '@prisma/client'
+import { generateUUID } from '@/common/snowflake'
 
 /**
  * AI Provider 创建数据
@@ -14,9 +15,12 @@ export type UpdateAiProviderData = Prisma.AiProviderUpdateInput
 /**
  * 创建 AI Provider
  */
-export async function createAiProvider(data: CreateAiProviderData) {
+export async function createAiProvider(data: Omit<CreateAiProviderData, 'id'>) {
   return prisma.aiProvider.create({
-    data,
+    data: {
+      ...data,
+      id: generateUUID().valueOf()
+    }
   })
 }
 
@@ -26,17 +30,17 @@ export async function createAiProvider(data: CreateAiProviderData) {
 export async function getAllAiProviders() {
   return prisma.aiProvider.findMany({
     orderBy: {
-      createdAt: 'desc',
-    },
+      createdAt: 'desc'
+    }
   })
 }
 
 /**
  * 根据 ID 查询 AI Provider
  */
-export async function getAiProviderById(id: string) {
+export async function getAiProviderById(id: bigint) {
   return prisma.aiProvider.findUnique({
-    where: { id },
+    where: { id }
   })
 }
 
@@ -46,8 +50,8 @@ export async function getAiProviderById(id: string) {
 export async function getDefaultAiProvider() {
   return prisma.aiProvider.findFirst({
     where: {
-      isDefault: true,
-    },
+      isDefault: true
+    }
   })
 }
 
@@ -57,30 +61,30 @@ export async function getDefaultAiProvider() {
 export async function getAiProvidersByType(provider: string) {
   return prisma.aiProvider.findMany({
     where: {
-      provider,
+      provider
     },
     orderBy: {
-      createdAt: 'desc',
-    },
+      createdAt: 'desc'
+    }
   })
 }
 
 /**
  * 更新 AI Provider
  */
-export async function updateAiProvider(id: string, data: UpdateAiProviderData) {
+export async function updateAiProvider(id: bigint, data: UpdateAiProviderData) {
   return prisma.aiProvider.update({
     where: { id },
-    data,
+    data
   })
 }
 
 /**
  * 删除 AI Provider
  */
-export async function deleteAiProvider(id: string) {
+export async function deleteAiProvider(id: bigint) {
   return prisma.aiProvider.delete({
-    where: { id },
+    where: { id }
   })
 }
 
@@ -88,25 +92,25 @@ export async function deleteAiProvider(id: string) {
  * 设置默认 AI Provider
  * 会自动取消其他 Provider 的默认状态
  */
-export async function setDefaultAiProvider(id: string) {
+export async function setDefaultAiProvider(id: bigint) {
   // 使用事务确保数据一致性
   return prisma.$transaction(async (tx) => {
     // 先取消所有默认状态
     await tx.aiProvider.updateMany({
       where: {
-        isDefault: true,
+        isDefault: true
       },
       data: {
-        isDefault: false,
-      },
+        isDefault: false
+      }
     })
 
     // 设置新的默认 Provider
     return tx.aiProvider.update({
       where: { id },
       data: {
-        isDefault: true,
-      },
+        isDefault: true
+      }
     })
   })
 }
@@ -114,12 +118,12 @@ export async function setDefaultAiProvider(id: string) {
 /**
  * 取消默认 AI Provider
  */
-export async function unsetDefaultAiProvider(id: string) {
+export async function unsetDefaultAiProvider(id: bigint) {
   return prisma.aiProvider.update({
     where: { id },
     data: {
-      isDefault: false,
-    },
+      isDefault: false
+    }
   })
 }
 
@@ -129,8 +133,8 @@ export async function unsetDefaultAiProvider(id: string) {
 export async function hasDefaultProvider() {
   const count = await prisma.aiProvider.count({
     where: {
-      isDefault: true,
-    },
+      isDefault: true
+    }
   })
   return count > 0
 }

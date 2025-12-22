@@ -6,8 +6,10 @@
     "src/renderer/src/**/*.tsx",
     "src/common/**/*",
     "src/preload/**/*",
-    "src/types"
-, "src/main/repository/example.ts", "src/main/common/db"  ],
+    "src/types",
+    "src/main/repository/example.ts",
+    "src/main/common/db"
+  ],
   "compilerOptions": {
     "composite": true,
     "jsx": "react-jsx",

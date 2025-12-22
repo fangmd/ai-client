@@ -10,7 +10,7 @@ datasource db {
 }
 
 model AiProvider {
-  id          String   @id @default(cuid())
+  id          BigInt   @id
   name        String?  // 提供商名称（可选，用于标识）
   provider    String   // 提供商类型: openai, anthropic, custom
   apiKey      String   // API 密钥

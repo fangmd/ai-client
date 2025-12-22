@@ -4,6 +4,9 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { registerHandlers, unregisterHandlers } from './handlers'
 import { initializeDatabase } from './common/db/prisma'
+;(BigInt.prototype as any).toJSON = function () {
+  return this.toString()
+}
 
 function createWindow(): void {
   // Create the browser window.
@@ -50,6 +53,7 @@ app.whenReady().then(async () => {
 
   // 初始化数据库
   try {
+    // TODO: 优化性能，数据库初始化慢
     await initializeDatabase()
   } catch (error) {
     console.error('Failed to initialize database:', error)

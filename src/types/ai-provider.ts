@@ -1,6 +1,6 @@
 // AI Provider 类型定义（与 Prisma schema 保持一致）
 export interface AiProvider {
-  id: string
+  id: bigint
   name: string | null
   provider: string
   apiKey: string
