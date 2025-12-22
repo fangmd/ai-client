@@ -1,0 +1,238 @@
+---
+description: 日志使用规范，定义主进程和渲染进程的日志工具使用标准，包括日志级别、使用场景、导入规范等，确保日志记录的一致性和可维护性
+globs: 
+alwaysApply: true
+---
+# 日志使用规范
+
+## 日志工具位置
+
+项目提供两个日志工具模块：
+- **主进程日志**：[logger.ts](mdc:src/main/utils/logger.ts) - 使用 `electron-log/main`
+- **渲染进程日志**：[log.ts](mdc:src/renderer/src/utils/log.ts) - 使用 `electron-log/renderer`
+
+## 日志级别
+
+项目提供四个日志级别，按严重程度从低到高：
+
+1. **logDebug** - 调试信息，用于开发调试
+2. **logInfo** - 一般信息，用于记录程序运行状态
+3. **logWarn** - 警告信息，用于记录潜在问题
+4. **logError** - 错误信息，用于记录错误和异常
+
+## 使用规范
+
+### 1. 导入规范
+
+#### 主进程（Main Process）
+```typescript
+import { logInfo, logError, logWarn, logDebug } from '@/main/utils/logger'
+```
+
+#### 渲染进程（Renderer Process）
+```typescript
+import { logInfo, logError, logWarn, logDebug } from '@/utils/log'
+```
+
+### 2. 日志初始化
+
+主进程日志需要在应用启动时初始化：
+```typescript
+import { initializeLogger } from '@/main/utils/logger'
+import { app } from 'electron'
+
+app.whenReady().then(() => {
+  initializeLogger(app.getPath('userData'))
+  // ... 其他初始化代码
+})
+```
+
+渲染进程日志无需初始化，直接使用即可。
+
+### 3. 使用场景
+
+#### logDebug - 调试信息
+- 函数入口/出口
+- 变量值打印
+- 流程追踪
+- 仅在开发环境使用
+
+```typescript
+logDebug('Function called with params:', { userId, action })
+logDebug('Processing step:', stepNumber)
+```
+
+#### logInfo - 一般信息
+- 业务操作记录
+- 重要状态变更
+- 用户操作记录
+- 系统运行状态
+
+```typescript
+logInfo('User login success:', userId)
+logInfo('File saved:', filePath)
+logInfo('Configuration loaded:', config)
+```
+
+#### logWarn - 警告信息
+- 非致命性错误
+- 降级处理
+- 配置缺失但可继续运行
+- 性能警告
+
+```typescript
+logWarn('API rate limit approaching:', remaining)
+logWarn('Using default configuration, config file not found')
+logWarn('Slow operation detected:', { duration, operation })
+```
+
+#### logError - 错误信息
+- 异常捕获
+- 操作失败
+- 系统错误
+- 必须包含错误上下文
+
+```typescript
+logError('Failed to save file:', error)
+logError('API request failed:', { url, status, error })
+logError('Database connection error:', error.message)
+```
+
+### 4. 日志格式规范
+
+#### 基本格式
+```typescript
+// ✅ 正确：提供上下文信息
+logInfo('User action:', { userId: 123, action: 'login' })
+logError('Operation failed:', error, { context: 'additional info' })
+
+// ❌ 错误：缺少上下文
+logInfo('Error occurred')
+logError(error)
+```
+
+#### 错误日志格式
+错误日志必须包含：
+- 错误对象或错误消息
+- 相关上下文信息（可选但推荐）
+
+```typescript
+// ✅ 正确：包含错误和上下文
+try {
+  // ...
+} catch (error) {
+  logError('Failed to process request:', error, { 
+    requestId, 
+    userId 
+  })
+}
+
+// ✅ 正确：仅错误对象
+catch (error) {
+  logError('Unexpected error:', error)
+}
+```
+
+### 5. 参数传递
+
+所有日志函数支持多个参数，使用展开运算符传递：
+```typescript
+// ✅ 正确：多个参数
+logInfo('User:', user, 'Action:', action)
+logError('Error:', error, 'Context:', context)
+
+// ✅ 正确：对象参数
+logInfo('State update:', { oldState, newState })
+```
+
+## 最佳实践
+
+1. **统一使用项目日志工具**
+   - ✅ 使用 `logInfo`, `logError`, `logWarn`, `logDebug`
+   - ❌ 禁止直接使用 `console.log`, `console.error` 等
+
+2. **提供有意义的上下文**
+   - 日志消息应该清晰描述发生了什么
+   - 包含必要的变量值和状态信息
+
+3. **错误日志包含完整信息**
+   - 记录错误对象本身
+   - 包含触发错误的上下文（用户ID、请求ID等）
+
+4. **合理使用日志级别**
+   - Debug: 仅开发调试
+   - Info: 正常业务流程
+   - Warn: 需要注意但不影响运行
+   - Error: 错误和异常
+
+5. **避免敏感信息**
+   - 不要在日志中记录密码、token等敏感信息
+   - 对敏感数据进行脱敏处理
+
+6. **性能考虑**
+   - 避免在高频调用的循环中使用日志
+   - 使用条件判断减少不必要的日志输出
+
+## 禁止事项
+
+- ❌ 禁止直接使用 `console.log`, `console.error`, `console.warn`, `console.debug`
+- ❌ 禁止在主进程使用渲染进程的日志工具
+- ❌ 禁止在渲染进程使用主进程的日志工具
+- ❌ 禁止在日志中记录密码、token、密钥等敏感信息
+- ❌ 禁止使用字符串拼接传递多个参数，应使用多个参数或对象
+- ❌ 禁止在错误日志中只记录错误消息而不记录错误对象
+
+## 代码示例
+
+### 主进程示例
+```typescript
+import { logInfo, logError, logWarn } from '@/main/utils/logger'
+
+// 业务操作
+async function saveUserData(userId: string, data: any) {
+  try {
+    logInfo('Saving user data:', { userId, dataSize: JSON.stringify(data).length })
+    // ... 保存逻辑
+    logInfo('User data saved successfully:', userId)
+  } catch (error) {
+    logError('Failed to save user data:', error, { userId })
+    throw error
+  }
+}
+
+// 错误处理
+try {
+  await someOperation()
+} catch (error) {
+  logError('Operation failed:', error, { operation: 'someOperation' })
+}
+```
+
+### 渲染进程示例
+```typescript
+import { logInfo, logError, logWarn, logDebug } from '@/utils/log'
+
+// 用户操作记录
+function handleUserClick(buttonId: string) {
+  logInfo('User clicked button:', buttonId)
+  // ... 处理逻辑
+}
+
+// API 调用
+async function fetchData() {
+  try {
+    logDebug('Fetching data from API')
+    const response = await api.get('/data')
+    logInfo('Data fetched successfully:', { count: response.data.length })
+    return response.data
+  } catch (error) {
+    logError('Failed to fetch data:', error)
+    throw error
+  }
+}
+
+// 警告场景
+if (cacheSize > MAX_CACHE_SIZE) {
+  logWarn('Cache size exceeded limit:', { current: cacheSize, limit: MAX_CACHE_SIZE })
+}
+```

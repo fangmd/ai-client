@@ -1,0 +1,78 @@
+---
+description: Prisma 数据库使用指南，包含 Schema 定义规范、数据类型规范、Prisma Client 使用规范、数据库迁移规范和最佳实践
+globs: 
+alwaysApply: true
+---
+# Prisma 数据库指南
+
+## 项目数据库结构
+
+主要的 Prisma 相关文件：
+- [schema.prisma](mdc:prisma/schema.prisma) - Prisma Schema 定义文件
+- [prisma.ts](mdc:electron-src/database/client/prisma.ts) - Prisma Client 初始化和配置
+- [prisma-run.ts](mdc:electron-src/database/client/prisma-run.ts) - Prisma 命令行工具运行配置
+
+## 数据库使用规范
+
+### Schema 定义规范
+1. 所有模型必须使用 PascalCase 命名
+2. 所有字段必须使用 camelCase 命名
+3. 必须为每个字段添加 `@map` 映射，保持数据库字段名为下划线格式
+4. 必须为每个模型添加 `@@map` 映射，指定实际的表名
+5. 时间字段统一使用 `DateTime` 类型，并用 @map 映射为下划线格式
+6. 必须为每个模型定义主键 `@id`，类型为 BigInt
+7. 删除标记统一使用 `delFlag` 字段，类型为 Int，默认 0，@map("del_flag")
+8. 必须为每个模型添加如下基础字段：
+   - createdTime DateTime @map("created_time")
+   - updatedTime DateTime @updatedAt @map("updated_time")
+   - delFlag Int @default(0) @map("del_flag")
+
+### 数据类型规范
+- BigInt 作为 ID 类型
+- String 作为文本类型
+- Int 作为整数类型
+- DateTime 作为时间类型
+- Float 作为浮点数类型
+- Boolean 作为布尔类型
+
+### Prisma Client 使用规范
+1. 统一使用 `getPrismaClient()` 获取 Prisma 实例
+2. DAO 层必须放在 `electron-src/database/dao` 目录下
+3. 每个模型的 DAO 必须独立成文件，文件名格式为 `{model-name}-dao.ts`
+4. 事务操作必须使用 `prisma.$transaction`，事务体内用 tx 代替 prisma
+5. 所有数据库操作必须用 try-catch 包装，异常需抛出
+6. 查询结果必须做空值检查，未查到需抛出错误
+7. ID 生成需用 `generateUUID().valueOf()`，创建方法参数类型需排除 id 字段
+8. 基础 CRUD 方法命名规范：
+   - create{ModelName}
+   - get{ModelName}ById
+   - getAll{ModelName}s
+   - update{ModelName}
+   - delete{ModelName}
+9. 自定义查询方法命名规范：
+   - search{ModelName}sBy{FieldName}
+   - batch{Operation}{ModelName}s
+10. 所有方法必须添加 JSDoc 注释，说明参数和返回值
+
+### 数据库迁移规范
+1. 修改 schema 后必须执行 `pnpm run db:init` 生成客户端代码
+2. 提交代码前确保迁移文件已正确生成
+3. 禁止手动修改迁移文件
+4. 生产环境必须使用 `migrate deploy` 执行迁移
+
+### 最佳实践
+1. 使用 Prisma 的类型系统确保类型安全
+2. 合理使用索引提高查询性能
+3. 大批量操作时使用批处理而不是循环
+4. 及时释放数据库连接
+5. 定期清理软删除的数据
+6. 使用参数化查询避免 SQL 注入
+7. 保持 DAO 层的单一职责
+8. 敏感数据需加密存储
+9. 大量数据操作注意性能优化
+
+## 开发流程
+1. 修改 schema.prisma
+2. 执行 `pnpm run db:push` 生成客户端代码并且更新数据库表结构
+3. 在 DAO 层实现数据库操作
+4. 在业务层调用 DAO 方法

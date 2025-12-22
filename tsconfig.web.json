@@ -7,7 +7,7 @@
     "src/common/**/*",
     "src/preload/**/*",
     "src/types"
-  ],
+, "src/main/repository/example.ts"  ],
   "compilerOptions": {
     "composite": true,
     "jsx": "react-jsx",

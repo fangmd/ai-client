@@ -5,3 +5,9 @@ out
 .eslintcache
 *.log*
 build
+
+# Prisma
+prisma/dev.db
+prisma/dev.db-journal
+*.db
+*.db-journal
