@@ -25,4 +25,9 @@ export interface AIConfig {
   model: string
   temperature?: number
   maxTokens?: number
+  // OpenAI 特定配置
+  openai?: {
+    organization?: string
+  }
+  // 未来其他提供商的特定配置
 }

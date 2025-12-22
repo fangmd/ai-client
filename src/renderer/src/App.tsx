@@ -8,8 +8,8 @@ function App(): React.JSX.Element {
   return (
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
       <Routes>
-        {/* <Route path="/" element={<Home />} /> */}
-        <Route path="/" element={<Test />} />
+        <Route path="/" element={<Home />} />
+        {/* <Route path="/" element={<Test />} /> */}
         <Route path="/2" element={<ChatWindow />} />
       </Routes>
     </ThemeProvider>

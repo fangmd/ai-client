@@ -40,7 +40,7 @@ alwaysApply: true
 
 ### 5. Renderer 调用
 - 直接使用 `window.electron.ipcRenderer.send()` 和 `window.electron.ipcRenderer.on()`
-- 通过 `window.api.channels` 获取通道名称
+- 必须从 `@/common/constants/ipc` 导入 `IPC_CHANNELS` 常量获取通道名称
 - 必须导入 `IPCResponse` 类型
 - 检查 `response.code === 0` 判断成功
 - 必须调用 `unsubscribe()` 取消监听
@@ -87,13 +87,14 @@ export class XxxHandler {
 ### Renderer 调用模板
 ```typescript
 import type { IPCResponse } from '@/preload/types'
+import { IPC_CHANNELS, SUCCESS_CODE } from '@/common/constants/ipc'
 
 // 发送请求
-window.electron.ipcRenderer.send(window.api.channels.test.ping)
+window.electron.ipcRenderer.send(IPC_CHANNELS.test.ping)
 
 // 监听响应
 const unsubscribe = window.electron.ipcRenderer.on(
-  window.api.channels.test.pong,
+  IPC_CHANNELS.test.pong,
   (_event, response: IPCResponse<DataType>) => {
     if (response.code === SUCCESS_CODE) {
       // 成功处理
@@ -121,3 +122,4 @@ const unsubscribe = window.electron.ipcRenderer.on(
 - ❌ 禁止在 Handler 中不使用 try-catch
 - ❌ 禁止返回非标准响应格式
 - ❌ 禁止使用 camelCase 或 snake_case 命名文件
+- ❌ 禁止使用 `window.api.*` 相关 API，应直接使用 `window.electron.ipcRenderer` 进行 IPC 通信，并通过导入 `IPC_CHANNELS` 获取通道名称

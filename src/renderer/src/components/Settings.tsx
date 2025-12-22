@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -10,36 +10,52 @@ import {
 } from '@renderer/components/ui/dialog'
 import { Button } from '@renderer/components/ui/button'
 import { useChatStore } from '@renderer/stores/chatStore'
-import type { AIConfig } from '@renderer/types/chat'
+import type { AIConfig } from '@/types/chat'
 
-export const Settings: React.FC = () => {
+export const Settings: React.FC<{ open?: boolean; onOpenChange?: (open: boolean) => void }> = ({
+  open: openProp,
+  onOpenChange: onOpenChangeProp
+}) => {
   const [open, setOpen] = useState(false)
+  const isControlled = openProp !== undefined
+  const finalOpen = isControlled ? openProp : open
+  const finalSetOpen = isControlled ? onOpenChangeProp || (() => {}) : setOpen
+
   const config = useChatStore((state) => state.config)
   const setConfig = useChatStore((state) => state.setConfig)
 
-  const [formData, setFormData] = useState<AIConfig>(
-    config || {
-      provider: 'openai',
-      apiKey: '',
-      baseURL: '',
-      model: 'gpt-4',
-      temperature: 0.7,
-      maxTokens: 2000
+  const defaultConfig: AIConfig = {
+    provider: 'openai',
+    apiKey: '',
+    baseURL: '',
+    model: 'gpt-4',
+    temperature: 0.7,
+    maxTokens: 2000
+  }
+
+  const [formData, setFormData] = useState<AIConfig>(config || defaultConfig)
+
+  // 当对话框打开时，同步最新的配置
+  useEffect(() => {
+    if (finalOpen && config) {
+      setFormData(config)
     }
-  )
+  }, [finalOpen, config])
 
   const handleSave = () => {
     setConfig(formData)
-    setOpen(false)
+    finalSetOpen(false)
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          Settings
-        </Button>
-      </DialogTrigger>
+    <Dialog open={finalOpen} onOpenChange={finalSetOpen}>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <Button variant="outline" size="sm">
+            Settings
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>AI Configuration</DialogTitle>

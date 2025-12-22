@@ -1,7 +1,7 @@
 import { Button } from '@renderer/components/ui/button'
 import { useState } from 'react'
 import type { IPCResponse } from '@/preload/types'
-import { SUCCESS_CODE } from '@/common/constants/ipc'
+import { SUCCESS_CODE, IPC_CHANNELS } from '@/common/constants/ipc'
 
 export const Test: React.FC = () => {
   const [message, setMessage] = useState<string>('')
@@ -9,11 +9,11 @@ export const Test: React.FC = () => {
   const handlePing = () => {
     console.log('ping')
     // 发送 ping 请求
-    window.electron.ipcRenderer.send(window.api.channels.test.ping)
+    window.electron.ipcRenderer.send(IPC_CHANNELS.test.ping)
 
     // 监听 pong 响应
     const unsubscribe = window.electron.ipcRenderer.on(
-      window.api.channels.test.pong,
+      IPC_CHANNELS.test.pong,
       (_event, response: IPCResponse<{ message: string }>) => {
         if (response.code === SUCCESS_CODE && response.data) {
           setMessage(response.data.message)

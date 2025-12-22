@@ -33,6 +33,8 @@ function createWindow(): void {
   // Load the remote URL for development or the local html file for production.
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+    // 开发环境下自动打开 DevTools
+    mainWindow.webContents.openDevTools({ mode: 'right' })
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }

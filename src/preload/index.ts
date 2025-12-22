@@ -1,11 +1,8 @@
 import { contextBridge } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import { IPC_CHANNELS } from '../common/constants'
 
-// Custom APIs for renderer - 暴露通道常量
-const api = {
-  channels: IPC_CHANNELS
-}
+// Custom APIs for renderer - 暴露通道常量和 AI 相关 API
+const api = {}
 
 // Use `contextBridge` APIs to expose Electron APIs to
 // renderer only if context isolation is enabled, otherwise

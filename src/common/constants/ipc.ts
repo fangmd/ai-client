@@ -10,5 +10,16 @@ export const IPC_CHANNELS = {
   test: {
     ping: 'test:ping',
     pong: 'test:pong'
+  },
+  // AI 模块
+  ai: {
+    // 请求流式聊天
+    streamChat: 'ai:stream-chat',
+    // 流式响应事件
+    streamChunk: 'ai:stream-chunk',
+    streamDone: 'ai:stream-done',
+    streamError: 'ai:stream-error',
+    // 取消请求
+    cancelChat: 'ai:cancel-chat'
   }
 } as const
