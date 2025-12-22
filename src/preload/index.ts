@@ -1,6 +1,6 @@
 import { contextBridge } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import { IPC_CHANNELS } from './channels'
+import { IPC_CHANNELS } from '../common/constants'
 
 // Custom APIs for renderer - 暴露通道常量
 const api = {

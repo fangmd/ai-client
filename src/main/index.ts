@@ -2,7 +2,7 @@ import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import { registerHandlers } from './handlers'
+import { registerHandlers, unregisterHandlers } from './handlers'
 
 function createWindow(): void {
   // Create the browser window.
@@ -71,6 +71,11 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+
+// 应用退出前清理 IPC Handlers
+app.on('will-quit', () => {
+  unregisterHandlers()
 })
 
 // In this file you can include the rest of your app's specific main process

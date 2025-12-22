@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron'
-import { IPC_CHANNELS } from '../../preload/channels'
+import { IPC_CHANNELS } from '../../common/constants'
 import type { IPCResponse } from '../../preload/types'
 
 /**
