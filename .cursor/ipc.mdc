@@ -33,17 +33,20 @@ alwaysApply: true
 - 必须从 `IPC_CHANNELS` 导入通道常量
 - 成功响应：`{ code: 0, data: result, msg: 'success' }`
 - 错误响应：`{ code: -1, msg: error.message }`
+- **优先使用 `ipcMain.handle` 直接返回结果**：如果函数能直接返回结果，使用 `ipcMain.handle` 并直接 `return`，不要使用 `event.reply`
+- **流式/事件式通信才使用 `ipcMain.on`**：只有在需要流式传输、多次事件推送或需要主动推送消息时，才使用 `ipcMain.on` + `event.reply`
 
 ### 4. Handler 注册
 - 统一在 `src/main/handlers/index.ts` 中注册
 - 使用 `registerHandlers()` 函数统一注册所有 handlers
 
 ### 5. Renderer 调用
-- 直接使用 `window.electron.ipcRenderer.send()` 和 `window.electron.ipcRenderer.on()`
+- **优先使用 `ipcRenderer.invoke`**：如果主进程函数能直接返回结果，使用 `window.electron.ipcRenderer.invoke()` 获取 Promise 结果
+- **流式/事件式通信才使用 `send` + `on`**：只有在需要流式传输、多次事件推送或需要主动推送消息时，才使用 `send()` + `on()` 的方式
 - 必须从 `@/common/constants/ipc` 导入 `IPC_CHANNELS` 常量获取通道名称
 - 必须导入 `IPCResponse` 类型
-- 检查 `response.code === 0` 判断成功
-- 必须调用 `unsubscribe()` 取消监听
+- 检查 `response.code === SUCCESS_CODE` 判断成功
+- 使用 `invoke` 时必须调用 `unsubscribe()` 取消监听（如果使用了 `on`）
 - 禁止硬编码通道名称字符串
 
 ### 6. 文件命名
@@ -52,7 +55,10 @@ alwaysApply: true
 
 ## 代码示例
 
-### Handler 实现模板
+### Handler 实现模板（推荐：直接返回结果）
+
+**优先使用 `ipcMain.handle` 直接返回结果**：
+
 ```typescript
 import { ipcMain } from 'electron'
 import { IPC_CHANNELS } from '../../common/constants'
@@ -60,49 +66,117 @@ import type { IPCResponse } from '../../preload/types'
 
 export class XxxHandler {
   static register(): void {
-    ipcMain.on(IPC_CHANNELS.xxx.action, (event) => {
+    // 使用 handle 直接返回结果
+    ipcMain.handle(IPC_CHANNELS.xxx.action, async (_event, data: RequestData) => {
       try {
+        const result = await someAsyncOperation(data)
         const response: IPCResponse<DataType> = {
           code: 0,
           data: result,
           msg: 'success'
         }
-        event.reply(IPC_CHANNELS.xxx.response, response)
+        return response
       } catch (error) {
         const response: IPCResponse = {
           code: -1,
           msg: error instanceof Error ? error.message : 'Unknown error'
         }
-        event.reply(IPC_CHANNELS.xxx.response, response)
+        return response
       }
     })
   }
 
   static unregister(): void {
-    ipcMain.removeAllListeners(IPC_CHANNELS.xxx.action)
+    ipcMain.removeHandler(IPC_CHANNELS.xxx.action)
   }
 }
 ```
 
-### Renderer 调用模板
+### Renderer 调用模板（推荐：使用 invoke）
+
+**优先使用 `ipcRenderer.invoke` 获取 Promise 结果**：
+
 ```typescript
 import type { IPCResponse } from '@/preload/types'
 import { IPC_CHANNELS, SUCCESS_CODE } from '@/common/constants/ipc'
 
-// 发送请求
-window.electron.ipcRenderer.send(IPC_CHANNELS.test.ping)
+// 使用 invoke 直接获取结果
+const response = await window.electron.ipcRenderer.invoke(
+  IPC_CHANNELS.xxx.action,
+  requestData
+) as IPCResponse<DataType>
 
-// 监听响应
-const unsubscribe = window.electron.ipcRenderer.on(
-  IPC_CHANNELS.test.pong,
-  (_event, response: IPCResponse<DataType>) => {
-    if (response.code === SUCCESS_CODE) {
-      // 成功处理
-    } else {
-      // 错误处理
-      console.error(response.msg)
-    }
-    unsubscribe()
+if (response.code === SUCCESS_CODE) {
+  // 成功处理
+  console.log(response.data)
+} else {
+  // 错误处理
+  console.error(response.msg)
+}
+```
+
+### Handler 实现模板（流式/事件式通信）
+
+**只有在需要流式传输或多次事件推送时才使用 `ipcMain.on`**：
+
+```typescript
+import { ipcMain } from 'electron'
+import { IPC_CHANNELS } from '../../common/constants'
+import type { IPCResponse } from '../../preload/types'
+
+export class StreamHandler {
+  static register(): void {
+    // 流式传输示例
+    ipcMain.on(IPC_CHANNELS.xxx.streamStart, async (event, data) => {
+      try {
+        // 流式发送多个数据块
+        for (const chunk of streamData) {
+          event.sender.send(IPC_CHANNELS.xxx.streamChunk, { chunk })
+        }
+        event.sender.send(IPC_CHANNELS.xxx.streamDone, {})
+      } catch (error) {
+        const response: IPCResponse = {
+          code: -1,
+          msg: error instanceof Error ? error.message : 'Unknown error'
+        }
+        event.sender.send(IPC_CHANNELS.xxx.streamError, response)
+      }
+    })
+  }
+
+  static unregister(): void {
+    ipcMain.removeAllListeners(IPC_CHANNELS.xxx.streamStart)
+  }
+}
+```
+
+### Renderer 调用模板（流式/事件式通信）
+
+**只有在需要流式传输或多次事件推送时才使用 `send` + `on`**：
+
+```typescript
+import type { IPCResponse } from '@/preload/types'
+import { IPC_CHANNELS, SUCCESS_CODE } from '@/common/constants/ipc'
+
+// 发送流式请求
+window.electron.ipcRenderer.send(IPC_CHANNELS.xxx.streamStart, requestData)
+
+// 监听流式数据块
+const unsubscribeChunk = window.electron.ipcRenderer.on(
+  IPC_CHANNELS.xxx.streamChunk,
+  (_event, data: { chunk: string }) => {
+    // 处理数据块
+    console.log(data.chunk)
+  }
+)
+
+// 监听完成事件
+const unsubscribeDone = window.electron.ipcRenderer.on(
+  IPC_CHANNELS.xxx.streamDone,
+  () => {
+    // 清理监听器
+    unsubscribeChunk()
+    unsubscribeDone()
   }
 )
 ```
@@ -112,8 +186,28 @@ const unsubscribe = window.electron.ipcRenderer.on(
 1. 在 `src/common/constants/ipc.ts` 添加通道常量
 2. 在 `src/preload/types.ts` 添加类型接口
 3. 创建 `src/main/handlers/xxx-handler.ts` 实现 Handler
+   - **优先使用 `ipcMain.handle`**：如果函数能直接返回结果
+   - **流式/事件式才使用 `ipcMain.on`**：如果需要流式传输或多次事件推送
 4. 在 `src/main/handlers/index.ts` 注册 Handler
 5. 在 renderer 中使用 `window.electron.ipcRenderer` 调用
+   - **优先使用 `invoke`**：如果主进程能直接返回结果
+   - **流式/事件式才使用 `send` + `on`**：如果需要流式传输或多次事件推送
+
+## 选择指南
+
+### 何时使用 `ipcMain.handle` + `ipcRenderer.invoke`（推荐）
+
+✅ 查询操作（获取数据）
+✅ 创建/更新/删除操作（返回操作结果）
+✅ 任何能直接返回单一结果的同步或异步操作
+✅ 需要等待结果后再继续执行的场景
+
+### 何时使用 `ipcMain.on` + `ipcRenderer.send` + `on`
+
+✅ 流式数据传输（如 AI 聊天流式响应）
+✅ 需要多次推送事件的场景（如进度更新）
+✅ 主进程主动推送消息给渲染进程
+✅ 不需要等待结果的单向通信
 
 ## 禁止事项
 
@@ -123,3 +217,5 @@ const unsubscribe = window.electron.ipcRenderer.on(
 - ❌ 禁止返回非标准响应格式
 - ❌ 禁止使用 camelCase 或 snake_case 命名文件
 - ❌ 禁止使用 `window.api.*` 相关 API，应直接使用 `window.electron.ipcRenderer` 进行 IPC 通信，并通过导入 `IPC_CHANNELS` 获取通道名称
+- ❌ **禁止在能直接返回结果时使用 `ipcMain.on` + `event.reply`**：如果函数能直接返回结果，必须使用 `ipcMain.handle` 并直接 `return`，不要使用监听方式
+- ❌ **禁止在能直接返回结果时使用 `send` + `on`**：如果主进程能直接返回结果，必须使用 `ipcRenderer.invoke` 获取 Promise，不要使用 `send` + `on` 的方式

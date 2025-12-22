@@ -20,12 +20,54 @@ import {
   SidebarTrigger
 } from '@renderer/components/ui/sidebar'
 import { Settings } from '@renderer/components/Settings'
-import { Settings as SettingsIcon } from 'lucide-react'
+import { Settings as SettingsIcon, Plus } from 'lucide-react'
 import { useChatStore } from '@renderer/stores/chatStore'
+import { AddAiModelDialog } from '@renderer/components/AddAiModelDialog'
+import type { AIConfig } from '@/types/chat'
+import type { AiProvider } from '@/types/ai-provider'
+import type { IPCResponse } from '@/preload/types'
+import { IPC_CHANNELS, SUCCESS_CODE } from '@/common/constants/ipc'
 
 export const Home: React.FC = () => {
   const config = useChatStore((state) => state.config)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [addModelOpen, setAddModelOpen] = useState(false)
+  const [defaultProvider, setDefaultProvider] = useState<AIConfig | null>(null)
+  const [loadingProvider, setLoadingProvider] = useState(true)
+
+  // 获取默认 AI Provider
+  useEffect(() => {
+    const loadDefaultProvider = async () => {
+      try {
+        setLoadingProvider(true)
+        const response = (await window.electron.ipcRenderer.invoke(
+          IPC_CHANNELS.aiProvider.getDefault
+        )) as IPCResponse<AiProvider | null>
+
+        if (response.code === SUCCESS_CODE && response.data) {
+          const provider = response.data
+          setDefaultProvider({
+            provider: provider.provider as 'openai' | 'anthropic' | 'custom',
+            apiKey: provider.apiKey,
+            baseURL: provider.baseURL || undefined,
+            model: provider.model,
+            temperature: provider.temperature || undefined,
+            maxTokens: provider.maxTokens || undefined,
+            openai: provider.organization
+              ? {
+                  organization: provider.organization
+                }
+              : undefined
+          })
+        }
+      } catch (error) {
+        console.error('Failed to load default provider:', error)
+      } finally {
+        setLoadingProvider(false)
+      }
+    }
+    loadDefaultProvider()
+  }, [addModelOpen]) // 当添加模型对话框关闭时重新加载
 
   // 如果没有配置，使用默认配置
   const defaultConfig = {
@@ -36,7 +78,8 @@ export const Home: React.FC = () => {
     maxTokens: 2000
   }
 
-  const aiConfig = config || defaultConfig
+  // 优先使用默认 provider，其次使用 store 中的 config，最后使用默认配置
+  const aiConfig = defaultProvider || config || defaultConfig
 
   const { messages, sendMessage, status, resetChat } = useAIChat(aiConfig)
 
@@ -110,6 +153,12 @@ export const Home: React.FC = () => {
               <SidebarGroupContent>
                 <SidebarMenu>
                   <SidebarMenuItem>
+                    <SidebarMenuButton onClick={() => setAddModelOpen(true)} tooltip="添加 AI Model">
+                      <Plus />
+                      <span>添加 AI Model</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
                     <SidebarMenuButton onClick={() => setSettingsOpen(true)} tooltip="设置">
                       <SettingsIcon />
                       <span>设置</span>
@@ -148,10 +197,21 @@ export const Home: React.FC = () => {
                       </div>
                     </div>
                   )}
-                  {!config && (
+                  {loadingProvider && (
+                    <div className="Msg__root flex pt-4">
+                      <div className="text-gray-500">加载 AI Provider 配置中...</div>
+                    </div>
+                  )}
+                  {!loadingProvider && !defaultProvider && !config && (
                     <div className="Msg__root flex pt-4">
                       <div className="text-yellow-500">
                         Please configure your AI settings before starting a chat.
+                        <button
+                          onClick={() => setAddModelOpen(true)}
+                          className="ml-2 text-blue-500 underline"
+                        >
+                          Add AI Model
+                        </button>
                         <button
                           onClick={() => setSettingsOpen(true)}
                           className="ml-2 text-blue-500 underline"
@@ -168,12 +228,12 @@ export const Home: React.FC = () => {
                 <div className="thread-content-max-width mx-auto w-full sticky bottom-0 left-0 right-0">
                   <div className="py-4 px-8 bg-background">
                     <ChatInput
-                      sendDisabled={status === 'submitted' || !config}
+                      sendDisabled={status === 'submitted' || (!defaultProvider && !config)}
                       resetChat={() => {
                         resetChat()
                       }}
                       onSend={(content: string) => {
-                        if (!content || !config) {
+                        if (!content || (!defaultProvider && !config)) {
                           return
                         }
                         handleSendMessage(content)
@@ -187,6 +247,40 @@ export const Home: React.FC = () => {
         </SidebarInset>
       </div>
       <Settings open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <AddAiModelDialog
+        open={addModelOpen}
+        onOpenChange={setAddModelOpen}
+        onSuccess={() => {
+          // 重新加载默认 provider
+          const loadDefaultProvider = async () => {
+            try {
+              const response = (await window.electron.ipcRenderer.invoke(
+                IPC_CHANNELS.aiProvider.getDefault
+              )) as IPCResponse<AiProvider | null>
+
+              if (response.code === SUCCESS_CODE && response.data) {
+                const provider = response.data
+                setDefaultProvider({
+                  provider: provider.provider as 'openai' | 'anthropic' | 'custom',
+                  apiKey: provider.apiKey,
+                  baseURL: provider.baseURL || undefined,
+                  model: provider.model,
+                  temperature: provider.temperature || undefined,
+                  maxTokens: provider.maxTokens || undefined,
+                  openai: provider.organization
+                    ? {
+                        organization: provider.organization
+                      }
+                    : undefined
+                })
+              }
+            } catch (error) {
+              console.error('Failed to load default provider:', error)
+            }
+          }
+          loadDefaultProvider()
+        }}
+      />
     </SidebarProvider>
   )
 }

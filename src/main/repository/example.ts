@@ -3,7 +3,7 @@
  * 此文件仅作为参考，展示如何使用 Prisma Client 操作 ai_provider 表
  */
 
-import { prisma } from '@/common/db/prisma'
+import { prisma } from '@/main/common/db/prisma'
 
 /**
  * 示例：创建 AI Provider

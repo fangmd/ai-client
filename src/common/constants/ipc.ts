@@ -21,5 +21,12 @@ export const IPC_CHANNELS = {
     streamError: 'ai:stream-error',
     // 取消请求
     cancelChat: 'ai:cancel-chat'
+  },
+  // AI Provider 模块
+  aiProvider: {
+    // 创建 AI Provider
+    create: 'ai-provider:create',
+    // 获取默认 AI Provider
+    getDefault: 'ai-provider:get-default'
   }
 } as const

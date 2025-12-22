@@ -1,4 +1,4 @@
-import { prisma } from '@/common/db/prisma'
+import { prisma } from '@/main/common/db/prisma'
 import type { Prisma } from '@prisma/client'
 
 /**
