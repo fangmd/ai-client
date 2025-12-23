@@ -11,8 +11,9 @@ import {
   SidebarMenuItem,
   SidebarTrigger
 } from '@renderer/components/ui/sidebar'
-import { Plus } from 'lucide-react'
+import { Plus, Settings } from 'lucide-react'
 import { ChatSessionList } from '@renderer/components/ChatSessionList'
+import { useNavigate, useLocation } from 'react-router-dom'
 
 interface AppSidebarProps {
   onAddModel: () => void
@@ -20,6 +21,11 @@ interface AppSidebarProps {
 }
 
 export const AppSidebar: React.FC<AppSidebarProps> = ({ onAddModel, onNewChat }) => {
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  const isSettingsActive = location.pathname === '/settings'
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
@@ -48,7 +54,20 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ onAddModel, onNewChat })
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter />
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={() => navigate('/settings')}
+              isActive={isSettingsActive}
+              tooltip="设置"
+            >
+              <Settings />
+              <span>设置</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
   )
 }

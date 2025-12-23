@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useChatStore, type ChatSession } from '@renderer/stores/chatStore'
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@renderer/components/ui/sidebar'
 import { Trash2, Plus } from 'lucide-react'
@@ -9,6 +10,9 @@ interface ChatSessionListProps {
 }
 
 export const ChatSessionList: React.FC<ChatSessionListProps> = ({ onNewChat }) => {
+  const navigate = useNavigate()
+  const location = useLocation()
+
   const {
     sessions,
     currentSessionId,
@@ -25,6 +29,12 @@ export const ChatSessionList: React.FC<ChatSessionListProps> = ({ onNewChat }) =
     loadSessions()
   }, [])
 
+  const navigateToChat = () => {
+    if (location.pathname !== '/') {
+      navigate('/')
+    }
+  }
+
   const handleSelectSession = (session: ChatSession) => {
     if (session.id !== currentSessionId) {
       // 如果正在处理流式消息，先停止
@@ -33,6 +43,12 @@ export const ChatSessionList: React.FC<ChatSessionListProps> = ({ onNewChat }) =
       }
       setCurrentSession(session.id)
     }
+    navigateToChat()
+  }
+
+  const handleNewChat = () => {
+    onNewChat()
+    navigateToChat()
   }
 
   const handleDeleteSession = async (e: React.MouseEvent, sessionId: bigint) => {
@@ -44,7 +60,7 @@ export const ChatSessionList: React.FC<ChatSessionListProps> = ({ onNewChat }) =
     <SidebarMenu>
       {/* 新建对话按钮 */}
       <SidebarMenuItem>
-        <SidebarMenuButton onClick={onNewChat} tooltip="新建对话">
+        <SidebarMenuButton onClick={handleNewChat} tooltip="新建对话">
           <Plus className="h-4 w-4" />
           <span>新建对话</span>
         </SidebarMenuButton>

@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
+import { Routes, Route } from 'react-router-dom'
 import { SidebarProvider } from '@renderer/components/ui/sidebar'
 import { useChatStore } from '@renderer/stores/chatStore'
 import { AddAiModelDialog } from '@renderer/components/AddAiModelDialog'
 import { AppSidebar } from '@renderer/components/AppSidebar'
 import { Chat } from '@renderer/page/chat'
+import { SettingsPage } from '@renderer/page/settings'
 import type { AIConfig } from '@/types/chat-type'
 import type { AiProvider } from '@/types/ai-provider-type'
 import type { IPCResponse } from '@/types'
@@ -76,12 +78,20 @@ export const Home: React.FC = () => {
     <SidebarProvider>
       <div className="flex min-h-screen w-screen">
         <AppSidebar onAddModel={() => setAddModelOpen(true)} onNewChat={handleNewChat} />
-        <Chat
-          aiConfig={aiConfig}
-          loadingProvider={loadingProvider}
-          hasConfig={hasConfig}
-          defaultProviderId={defaultProvider?.id ?? null}
-        />
+        <Routes>
+          <Route
+            index
+            element={
+              <Chat
+                aiConfig={aiConfig}
+                loadingProvider={loadingProvider}
+                hasConfig={hasConfig}
+                defaultProviderId={defaultProvider?.id ?? null}
+              />
+            }
+          />
+          <Route path="settings" element={<SettingsPage />} />
+        </Routes>
       </div>
       <AddAiModelDialog
         open={addModelOpen}
