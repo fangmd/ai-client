@@ -7,13 +7,6 @@ import type { IPCResponse } from '@/types'
 import { IPC_CHANNELS, SUCCESS_CODE } from '@/common/constants/ipc'
 import { Plus, Trash2, Star, Bot } from 'lucide-react'
 
-// 序列化后的 AiProvider 类型（bigint 转换为 string）
-interface SerializedAiProvider extends Omit<AiProvider, 'id' | 'createdAt' | 'updatedAt'> {
-  id: string
-  createdAt: string
-  updatedAt: string
-}
-
 // 提供商名称映射
 const providerLabels: Record<string, string> = {
   openai: 'OpenAI',
@@ -22,7 +15,7 @@ const providerLabels: Record<string, string> = {
 }
 
 export const AiModelList: React.FC = () => {
-  const [providers, setProviders] = useState<SerializedAiProvider[]>([])
+  const [providers, setProviders] = useState<AiProvider[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
 
@@ -31,7 +24,7 @@ export const AiModelList: React.FC = () => {
     try {
       const response = (await window.electron.ipcRenderer.invoke(
         IPC_CHANNELS.aiProvider.list
-      )) as IPCResponse<SerializedAiProvider[]>
+      )) as IPCResponse<AiProvider[]>
 
       if (response.code === SUCCESS_CODE && response.data) {
         setProviders(response.data)
@@ -73,7 +66,7 @@ export const AiModelList: React.FC = () => {
       const response = (await window.electron.ipcRenderer.invoke(
         IPC_CHANNELS.aiProvider.setDefault,
         BigInt(id)
-      )) as IPCResponse<SerializedAiProvider>
+      )) as IPCResponse<AiProvider>
 
       if (response.code === SUCCESS_CODE) {
         loadProviders()
@@ -145,7 +138,7 @@ export const AiModelList: React.FC = () => {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleSetDefault(provider.id)}
+                      onClick={() => handleSetDefault(provider.id.toString())}
                     >
                       设为默认
                     </Button>
@@ -154,7 +147,7 @@ export const AiModelList: React.FC = () => {
                     variant="ghost"
                     size="icon-sm"
                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                    onClick={() => handleDelete(provider.id)}
+                    onClick={() => handleDelete(provider.id.toString())}
                   >
                     <Trash2 className="size-4" />
                   </Button>
