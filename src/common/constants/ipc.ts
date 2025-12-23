@@ -25,6 +25,8 @@ export const IPC_CHANNELS = {
     list: 'ai-provider:list',
     // 获取默认 AI Provider
     getDefault: 'ai-provider:get-default',
+    // 更新 AI Provider
+    update: 'ai-provider:update',
     // 删除 AI Provider
     delete: 'ai-provider:delete',
     // 设置默认 AI Provider

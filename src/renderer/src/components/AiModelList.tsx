@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { Button } from '@renderer/components/ui/button'
-import { AddAiModelDialog } from './AddAiModelDialog'
+import { AiModelDialog } from './AiModelDialog'
 import { EmptyState } from './EmptyState'
 import type { AiProvider } from '@/types/ai-provider-type'
 import type { IPCResponse } from '@/types'
 import { IPC_CHANNELS, SUCCESS_CODE } from '@/common/constants/ipc'
-import { Plus, Trash2, Star, Bot } from 'lucide-react'
+import { Plus, Trash2, Star, Bot, Pencil } from 'lucide-react'
 
 // 提供商名称映射
 const providerLabels: Record<string, string> = {
@@ -18,6 +18,7 @@ export const AiModelList: React.FC = () => {
   const [providers, setProviders] = useState<AiProvider[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [editingProvider, setEditingProvider] = useState<AiProvider | undefined>(undefined)
 
   // 加载所有模型
   const loadProviders = useCallback(async () => {
@@ -78,11 +79,31 @@ export const AiModelList: React.FC = () => {
     }
   }
 
+  // 打开添加对话框
+  const handleOpenAddDialog = () => {
+    setEditingProvider(undefined)
+    setDialogOpen(true)
+  }
+
+  // 打开编辑对话框
+  const handleEdit = (provider: AiProvider) => {
+    setEditingProvider(provider)
+    setDialogOpen(true)
+  }
+
+  // 对话框关闭时清除编辑状态
+  const handleDialogOpenChange = (open: boolean) => {
+    setDialogOpen(open)
+    if (!open) {
+      setEditingProvider(undefined)
+    }
+  }
+
   return (
     <section className="mb-8">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-medium">大模型</h2>
-        <Button size="sm" onClick={() => setDialogOpen(true)}>
+        <Button size="sm" onClick={handleOpenAddDialog}>
           <Plus className="size-4" />
           添加模型
         </Button>
@@ -146,6 +167,13 @@ export const AiModelList: React.FC = () => {
                   <Button
                     variant="ghost"
                     size="icon-sm"
+                    onClick={() => handleEdit(provider)}
+                  >
+                    <Pencil className="size-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
                     onClick={() => handleDelete(provider.id.toString())}
                   >
@@ -158,12 +186,12 @@ export const AiModelList: React.FC = () => {
         )}
       </div>
 
-      <AddAiModelDialog
+      <AiModelDialog
         open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        onOpenChange={handleDialogOpenChange}
         onSuccess={loadProviders}
+        editProvider={editingProvider}
       />
     </section>
   )
 }
-

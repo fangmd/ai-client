@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { SidebarProvider } from '@renderer/components/ui/sidebar'
 import { useChatStore } from '@renderer/stores/chatStore'
-import { AddAiModelDialog } from '@renderer/components/AddAiModelDialog'
+import { AiModelDialog } from '@renderer/components/AiModelDialog'
 import { AppSidebar } from '@renderer/components/AppSidebar'
 import { Chat } from '@renderer/page/chat'
 import { SettingsPage } from '@renderer/page/settings'
@@ -93,7 +93,7 @@ export const Home: React.FC = () => {
           <Route path="settings" element={<SettingsPage />} />
         </Routes>
       </div>
-      <AddAiModelDialog
+      <AiModelDialog
         open={addModelOpen}
         onOpenChange={setAddModelOpen}
         onSuccess={() => {

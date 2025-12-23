@@ -1,11 +1,12 @@
 import { ipcMain } from 'electron'
 import { IPC_CHANNELS } from '@/common/constants'
 import { responseSuccess, responseError } from '@/common/response'
-import type { CreateAiProviderData } from '@/types'
+import type { CreateAiProviderData, UpdateAiProviderData } from '@/types'
 import {
   createAiProvider,
   getAllAiProviders,
   getDefaultAiProvider,
+  updateAiProvider,
   setDefaultAiProvider,
   deleteAiProvider
 } from '@/main/repository/ai-provider'
@@ -76,6 +77,34 @@ export class AIProviderHandler {
       }
     })
 
+    // 更新 AI Provider
+    ipcMain.handle(
+      IPC_CHANNELS.aiProvider.update,
+      async (_event, id: bigint, data: UpdateAiProviderData) => {
+        logInfo('【IPC Handler】aiProvider:update called, id:', id, 'data:', {
+          name: data.name,
+          provider: data.provider,
+          model: data.model
+        })
+        try {
+          const provider = await updateAiProvider(id, data)
+
+          // 如果设置为默认，则设置默认状态
+          if (data.isDefault) {
+            await setDefaultAiProvider(provider.id)
+          }
+
+          const response = responseSuccess(provider)
+          logInfo('【IPC Handler】aiProvider:update success')
+          return response
+        } catch (error) {
+          const response = responseError(error)
+          logError('【IPC Handler】aiProvider:update error, response:', response)
+          return response
+        }
+      }
+    )
+
     // 删除 AI Provider
     ipcMain.handle(IPC_CHANNELS.aiProvider.delete, async (_event, id: bigint) => {
       logInfo('【IPC Handler】aiProvider:delete called, id:', id)
@@ -114,6 +143,7 @@ export class AIProviderHandler {
     ipcMain.removeHandler(IPC_CHANNELS.aiProvider.create)
     ipcMain.removeHandler(IPC_CHANNELS.aiProvider.list)
     ipcMain.removeHandler(IPC_CHANNELS.aiProvider.getDefault)
+    ipcMain.removeHandler(IPC_CHANNELS.aiProvider.update)
     ipcMain.removeHandler(IPC_CHANNELS.aiProvider.delete)
     ipcMain.removeHandler(IPC_CHANNELS.aiProvider.setDefault)
   }
