@@ -26,7 +26,7 @@ export class MessageHandler {
       async (
         _event,
         data: {
-          sessionId: string
+          sessionId: bigint
           role: MessageRole
           content: string
           status?: DbMessageStatus
@@ -42,8 +42,7 @@ export class MessageHandler {
         })
         try {
           // 验证 sessionId 的有效性
-          const sessionId = BigInt(data.sessionId)
-          const exists = await chatSessionExists(sessionId)
+          const exists = await chatSessionExists(data.sessionId)
           if (!exists) {
             const response = responseError('Chat session not found')
             logError('【IPC Handler】message:create error, response:', response)
@@ -51,7 +50,7 @@ export class MessageHandler {
           }
 
           const messageData: CreateMessageData = {
-            sessionId,
+            sessionId: data.sessionId,
             role: data.role,
             content: data.content,
             status: data.status,
@@ -59,7 +58,7 @@ export class MessageHandler {
           }
 
           const message = await createMessage(messageData)
-          const response = responseSuccess(serializeMessage(message))
+          const response = responseSuccess(message)
           logInfo('【IPC Handler】message:create success, response:', response)
           return response
         } catch (error) {
@@ -73,12 +72,11 @@ export class MessageHandler {
     // 更新消息
     ipcMain.handle(
       IPC_CHANNELS.message.update,
-      async (_event, data: { id: string; data: UpdateMessageData }) => {
+      async (_event, data: { id: bigint; data: UpdateMessageData }) => {
         logInfo('【IPC Handler】message:update called, params:', data)
         try {
-          const id = BigInt(data.id)
-          const message = await updateMessage(id, data.data)
-          const response = responseSuccess(serializeMessage(message))
+          const message = await updateMessage(data.id, data.data)
+          const response = responseSuccess(message)
           logInfo('【IPC Handler】message:update success, response:', response)
           return response
         } catch (error) {
@@ -92,15 +90,14 @@ export class MessageHandler {
     // 追加消息内容（用于流式响应）
     ipcMain.handle(
       IPC_CHANNELS.message.append,
-      async (_event, data: { id: string; content: string }) => {
+      async (_event, data: { id: bigint; content: string }) => {
         logInfo('【IPC Handler】message:append called, params:', {
           id: data.id,
           contentLength: data.content.length
         })
         try {
-          const id = BigInt(data.id)
-          const message = await appendMessageContent(id, data.content)
-          const response = responseSuccess(serializeMessage(message))
+          const message = await appendMessageContent(data.id, data.content)
+          const response = responseSuccess(message)
           logInfo('【IPC Handler】message:append success, response:', response)
           return response
         } catch (error) {
@@ -112,12 +109,11 @@ export class MessageHandler {
     )
 
     // 查询会话的所有消息
-    ipcMain.handle(IPC_CHANNELS.message.list, async (_event, data: { sessionId: string }) => {
+    ipcMain.handle(IPC_CHANNELS.message.list, async (_event, data: { sessionId: bigint }) => {
       logInfo('【IPC Handler】message:list called, params:', data)
       try {
-        const sessionId = BigInt(data.sessionId)
-        const messages = await listMessages(sessionId)
-        const response = responseSuccess(messages.map(serializeMessage))
+        const messages = await listMessages(data.sessionId)
+        const response = responseSuccess(messages)
         logInfo('【IPC Handler】message:list success, count:', messages.length)
         return response
       } catch (error) {
@@ -136,28 +132,5 @@ export class MessageHandler {
     ipcMain.removeHandler(IPC_CHANNELS.message.update)
     ipcMain.removeHandler(IPC_CHANNELS.message.append)
     ipcMain.removeHandler(IPC_CHANNELS.message.list)
-  }
-}
-
-/**
- * 序列化 Message（将 BigInt 转换为 string）
- */
-function serializeMessage(message: {
-  id: bigint
-  sessionId: bigint
-  role: string
-  content: string
-  status: string | null
-  totalTokens: number | null
-  createdAt: Date
-}) {
-  return {
-    id: message.id.toString(),
-    sessionId: message.sessionId.toString(),
-    role: message.role,
-    content: message.content,
-    status: message.status,
-    totalTokens: message.totalTokens,
-    createdAt: message.createdAt.toISOString()
   }
 }

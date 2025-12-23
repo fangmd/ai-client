@@ -15,7 +15,7 @@ function generateRequestId(): string {
 
 interface UseAIChatOptions {
   config: AIConfig
-  defaultProviderId: string | null
+  defaultProviderId: bigint | null
 }
 
 /**

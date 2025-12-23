@@ -12,7 +12,7 @@ interface ChatProps {
   aiConfig: AIConfig
   loadingProvider: boolean
   hasConfig: boolean
-  defaultProviderId: string | null
+  defaultProviderId: bigint | null
 }
 
 export const Chat: React.FC<ChatProps> = ({
@@ -133,7 +133,7 @@ export const Chat: React.FC<ChatProps> = ({
             ref={messagesContainerRef}
           >
             {displayMessages.map((message) => (
-              <MessageItem key={message.id} message={message} />
+              <MessageItem key={String(message.id)} message={message} />
             ))}
 
             {isSending && messages[messages.length - 1]?.role === 'user' && (

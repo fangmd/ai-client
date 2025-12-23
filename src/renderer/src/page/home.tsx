@@ -26,7 +26,7 @@ export const Home: React.FC = () => {
         const provider = response.data
         setDefaultProvider(provider)
         // 设置当前 AI Provider ID
-        setCurrentAiProviderId(provider.id.toString())
+        setCurrentAiProviderId(provider.id)
       }
     } catch (error) {
       console.error('Failed to load default provider:', error)
@@ -80,7 +80,7 @@ export const Home: React.FC = () => {
           aiConfig={aiConfig}
           loadingProvider={loadingProvider}
           hasConfig={hasConfig}
-          defaultProviderId={defaultProvider?.id.toString() || null}
+          defaultProviderId={defaultProvider?.id ?? null}
         />
       </div>
       <AddAiModelDialog

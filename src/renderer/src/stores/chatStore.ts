@@ -11,9 +11,9 @@ import { IPC_CHANNELS, SUCCESS_CODE } from '@/common/constants/ipc'
  * 前端使用的 ChatSession 类型
  */
 export interface ChatSession {
-  id: string
+  id: bigint
   title: string
-  aiProviderId: string
+  aiProviderId: bigint
   createdAt: string
   updatedAt: string
 }
@@ -22,8 +22,8 @@ export interface ChatSession {
  * 前端使用的 Message 类型
  */
 export interface Message {
-  id: string
-  sessionId: string
+  id: bigint
+  sessionId: bigint
   role: 'user' | 'assistant' | 'system'
   content: string
   status: 'sent' | 'pending' | 'error' | null
@@ -33,8 +33,8 @@ export interface Message {
 
 interface ChatState {
   // 当前会话
-  currentSessionId: string | null
-  currentAiProviderId: string | null // 当前使用的 AI Provider ID
+  currentSessionId: bigint | null
+  currentAiProviderId: bigint | null // 当前使用的 AI Provider ID
   sessions: ChatSession[]
   messages: Message[]
 
@@ -51,33 +51,33 @@ interface ChatState {
 
   // Actions - 配置
   setConfig: (config: AIConfig) => void
-  setCurrentAiProviderId: (aiProviderId: string) => void
+  setCurrentAiProviderId: (aiProviderId: bigint) => void
 
   // Actions - 同步数据库
   loadSessions: () => Promise<void>
-  loadSession: (id: string) => Promise<void>
-  createSession: (aiProviderId: string, title?: string) => Promise<string | null>
-  updateSession: (id: string, data: { title?: string }) => Promise<void>
-  deleteSession: (id: string) => Promise<void>
+  loadSession: (id: bigint) => Promise<void>
+  createSession: (aiProviderId: bigint, title?: string) => Promise<bigint | null>
+  updateSession: (id: bigint, data: { title?: string }) => Promise<void>
+  deleteSession: (id: bigint) => Promise<void>
 
   // Actions - 消息管理
   addMessage: (
-    sessionId: string,
+    sessionId: bigint,
     message: { role: 'user' | 'assistant' | 'system'; content: string; status?: 'sent' | 'pending' | 'error' }
   ) => Promise<Message | null>
-  updateMessage: (id: string, data: { content?: string; status?: 'sent' | 'pending' | 'error'; totalTokens?: number }) => Promise<void>
-  appendToMessage: (id: string, content: string) => Promise<void>
+  updateMessage: (id: bigint, data: { content?: string; status?: 'sent' | 'pending' | 'error'; totalTokens?: number }) => Promise<void>
+  appendToMessage: (id: bigint, content: string) => Promise<void>
 
   // Actions - 本地状态
-  setCurrentSession: (sessionId: string | null) => void
+  setCurrentSession: (sessionId: bigint | null) => void
   clearMessages: () => void
   resetChat: () => void
   setIsSending: (isSending: boolean) => void
 
   // Actions - 本地消息操作（用于流式响应时的实时更新）
   addLocalMessage: (message: Message) => void
-  updateLocalMessage: (id: string, updates: Partial<Message>) => void
-  appendToLocalMessage: (id: string, content: string) => void
+  updateLocalMessage: (id: bigint, updates: Partial<Message>) => void
+  appendToLocalMessage: (id: bigint, content: string) => void
 
   // Actions - 流式消息控制
   registerStopStream: (fn: () => void) => void
@@ -124,7 +124,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   /**
    * 加载单个会话（包含消息）
    */
-  loadSession: async (id: string) => {
+  loadSession: async (id: bigint) => {
     set({ loadingMessages: true })
     try {
       const response = (await window.electron.ipcRenderer.invoke(
@@ -149,7 +149,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   /**
    * 创建新会话
    */
-  createSession: async (aiProviderId: string, title?: string) => {
+  createSession: async (aiProviderId: bigint, title?: string) => {
     try {
       const response = (await window.electron.ipcRenderer.invoke(
         IPC_CHANNELS.chatSession.create,
@@ -176,7 +176,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   /**
    * 更新会话
    */
-  updateSession: async (id: string, data: { title?: string }) => {
+  updateSession: async (id: bigint, data: { title?: string }) => {
     try {
       const response = (await window.electron.ipcRenderer.invoke(
         IPC_CHANNELS.chatSession.update,
@@ -198,7 +198,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   /**
    * 删除会话
    */
-  deleteSession: async (id: string) => {
+  deleteSession: async (id: bigint) => {
     try {
       const response = (await window.electron.ipcRenderer.invoke(
         IPC_CHANNELS.chatSession.delete,
@@ -338,7 +338,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   /**
    * 更新本地消息（不写入数据库）
    */
-  updateLocalMessage: (id, updates) => {
+  updateLocalMessage: (id: bigint, updates) => {
     set((state) => ({
       messages: state.messages.map((m) =>
         m.id === id ? { ...m, ...updates } : m
@@ -349,7 +349,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   /**
    * 追加本地消息内容（不写入数据库）
    */
-  appendToLocalMessage: (id, content) => {
+  appendToLocalMessage: (id: bigint, content) => {
     set((state) => ({
       messages: state.messages.map((m) =>
         m.id === id ? { ...m, content: m.content + content } : m

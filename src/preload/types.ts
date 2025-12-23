@@ -38,22 +38,22 @@ export interface AIIPC {
 }
 
 /**
- * 序列化后的 ChatSession 类型（用于 IPC 传输）
+ * IPC 传输的 ChatSession 类型
  */
 export interface SerializedChatSession {
-  id: string
+  id: bigint
   title: string
-  aiProviderId: string
+  aiProviderId: bigint
   createdAt: string
   updatedAt: string
 }
 
 /**
- * 序列化后的 Message 类型（用于 IPC 传输）
+ * IPC 传输的 Message 类型
  */
 export interface SerializedMessage {
-  id: string
-  sessionId: string
+  id: bigint
+  sessionId: bigint
   role: 'user' | 'assistant' | 'system'
   content: string
   status: 'sent' | 'pending' | 'error' | null
@@ -68,7 +68,7 @@ export interface ChatSessionIPC {
   create: {
     request: {
       title?: string
-      aiProviderId: string
+      aiProviderId: bigint
     }
     response: IPCResponse<SerializedChatSession>
   }
@@ -80,12 +80,12 @@ export interface ChatSessionIPC {
     response: IPCResponse<SerializedChatSession[]>
   }
   get: {
-    request: { id: string }
+    request: { id: bigint }
     response: IPCResponse<SerializedChatSession & { messages: SerializedMessage[] }>
   }
   update: {
     request: {
-      id: string
+      id: bigint
       data: {
         title?: string
       }
@@ -93,7 +93,7 @@ export interface ChatSessionIPC {
     response: IPCResponse<SerializedChatSession>
   }
   delete: {
-    request: { id: string }
+    request: { id: bigint }
     response: IPCResponse<void>
   }
 }
@@ -104,7 +104,7 @@ export interface ChatSessionIPC {
 export interface MessageIPC {
   create: {
     request: {
-      sessionId: string
+      sessionId: bigint
       role: 'user' | 'assistant' | 'system'
       content: string
       status?: 'sent' | 'pending' | 'error'
@@ -114,7 +114,7 @@ export interface MessageIPC {
   }
   update: {
     request: {
-      id: string
+      id: bigint
       data: {
         content?: string
         status?: 'sent' | 'pending' | 'error'
@@ -125,13 +125,13 @@ export interface MessageIPC {
   }
   append: {
     request: {
-      id: string
+      id: bigint
       content: string
     }
     response: IPCResponse<SerializedMessage>
   }
   list: {
-    request: { sessionId: string }
+    request: { sessionId: bigint }
     response: IPCResponse<SerializedMessage[]>
   }
 }

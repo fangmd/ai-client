@@ -1,26 +1,30 @@
 /**
- * 递归遍历对象，将所有的 BigInt 转换为 String
+ * IPC 序列化：递归处理对象中的特殊类型
+ * - Date -> ISO string
+ *
+ * 注：Electron IPC 使用 structured clone 算法，原生支持 BigInt
  */
-export function convertBigIntToString(obj: any): any {
-  // 处理基础类型
+export function serializeForIPC<T = unknown>(obj: T): T {
+  // 处理 null/undefined
   if (obj === null || obj === undefined) return obj
-  if (typeof obj === 'bigint') return obj.toString()
 
-  // 如果不是对象（且不是 null/bigint），直接返回
+  // 处理 Date
+  if (obj instanceof Date) return obj.toISOString() as T
+
+  // 如果不是对象，直接返回（包括 BigInt）
   if (typeof obj !== 'object') return obj
 
   // 处理数组
   if (Array.isArray(obj)) {
-    return obj.map((item) => convertBigIntToString(item))
+    return obj.map((item) => serializeForIPC(item)) as T
   }
 
   // 处理普通对象
-  const newObj: any = {}
+  const newObj: Record<string, unknown> = {}
   for (const key in obj) {
     if (Object.prototype.hasOwnProperty.call(obj, key)) {
-      const value = obj[key]
-      newObj[key] = convertBigIntToString(value)
+      newObj[key] = serializeForIPC((obj as Record<string, unknown>)[key])
     }
   }
-  return newObj
+  return newObj as T
 }

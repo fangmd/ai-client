@@ -12,7 +12,7 @@ export type MessageStatus = 'sending' | 'done' | 'error'
  * 消息类型（用于 UI 显示）
  */
 export interface Message {
-  id: string
+  id: bigint
   role: MessageRole
   content: string
   timestamp: number
@@ -23,7 +23,7 @@ export interface Message {
  * 对话会话类型（用于 UI 显示）
  */
 export interface ChatSession {
-  id: string
+  id: bigint
   title: string
   messages: Message[]
   createdAt: number
