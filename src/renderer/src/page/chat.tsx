@@ -1,19 +1,14 @@
 import { useAIChat } from '@renderer/hooks/use-ai-chat'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { MessageItem } from '@renderer/chat/message-item'
 import '@renderer/assets/chat.css'
 import { ChatInput } from '@renderer/chat/chat-input'
 import { LoadingAnimation } from '@renderer/components/loading'
 import type { AIConfig } from '@/types/chat-type'
 import type { AiProvider } from '@/types/ai-provider-type'
-import type { IPCResponse } from '@/types'
 import { useChatStore } from '@renderer/stores/chatStore'
+import { useAiProviderStore } from '@renderer/stores/ai-provider-store'
 import { logDebug } from '@renderer/utils'
-import { IPC_CHANNELS, SUCCESS_CODE } from '@/common/constants/ipc'
-
-interface ChatProps {
-  refreshKey?: number // 用于外部触发刷新 provider
-}
 
 // 默认配置
 const defaultConfig: AIConfig = {
@@ -38,40 +33,31 @@ const buildAIConfig = (provider: AiProvider | null): AIConfig => {
   }
 }
 
-export const Chat: React.FC<ChatProps> = ({ refreshKey }) => {
-  const { config, setCurrentAiProviderId } = useChatStore()
-  const [defaultProvider, setDefaultProvider] = useState<AiProvider | null>(null)
-  const [loadingProvider, setLoadingProvider] = useState(true)
+export const Chat: React.FC = () => {
+  const { config, currentAiProviderId, setCurrentAiProviderId } = useChatStore()
+  const { providers, loading: loadingProvider, getDefaultProvider } = useAiProviderStore()
 
-  // 加载默认 AI Provider
-  const loadDefaultProvider = useCallback(async () => {
-    try {
-      setLoadingProvider(true)
-      const response = (await window.electron.ipcRenderer.invoke(
-        IPC_CHANNELS.aiProvider.getDefault
-      )) as IPCResponse<AiProvider | null>
-
-      if (response.code === SUCCESS_CODE && response.data) {
-        const provider = response.data
-        setDefaultProvider(provider)
-        setCurrentAiProviderId(provider.id)
-      }
-    } catch (error) {
-      console.error('Failed to load default provider:', error)
-    } finally {
-      setLoadingProvider(false)
+  // 根据 currentAiProviderId 获取对应的 provider，若没有则使用默认 provider
+  const currentProvider = useMemo(() => {
+    if (currentAiProviderId) {
+      const provider = providers.find((p) => p.id === currentAiProviderId)
+      if (provider) return provider
     }
-  }, [setCurrentAiProviderId])
+    // 没有指定 providerId 或找不到时，使用默认 provider
+    return getDefaultProvider() ?? null
+  }, [currentAiProviderId, providers, getDefaultProvider])
 
-  // 初始化时和 refreshKey 变化时加载 provider
+  // 当没有 currentAiProviderId 但有默认 provider 时，设置 currentAiProviderId
   useEffect(() => {
-    loadDefaultProvider()
-  }, [refreshKey, loadDefaultProvider])
+    if (!currentAiProviderId && currentProvider) {
+      setCurrentAiProviderId(currentProvider.id)
+    }
+  }, [currentAiProviderId, currentProvider, setCurrentAiProviderId])
 
   // 计算 aiConfig 和 hasConfig
-  const aiConfig = defaultProvider ? buildAIConfig(defaultProvider) : config || defaultConfig
-  const hasConfig = !!(defaultProvider || config)
-  const defaultProviderId = defaultProvider?.id ?? null
+  const aiConfig = currentProvider ? buildAIConfig(currentProvider) : config || defaultConfig
+  const hasConfig = !!(currentProvider || config)
+  const defaultProviderId = currentProvider?.id ?? null
 
   const { messages, sendMessage, isSending, resetChat } = useAIChat({
     config: aiConfig,

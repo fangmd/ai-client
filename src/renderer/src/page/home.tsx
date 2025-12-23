@@ -10,16 +10,10 @@ import { SettingsPage } from '@renderer/page/settings'
 export const Home: React.FC = () => {
   const { resetChat } = useChatStore()
   const [addModelOpen, setAddModelOpen] = useState(false)
-  const [refreshKey, setRefreshKey] = useState(0)
 
   // 新建对话
   const handleNewChat = () => {
     resetChat()
-  }
-
-  // 触发 Chat 组件刷新 provider
-  const handleRefreshProvider = () => {
-    setRefreshKey((prev) => prev + 1)
   }
 
   return (
@@ -27,14 +21,13 @@ export const Home: React.FC = () => {
       <div className="flex min-h-screen w-screen">
         <AppSidebar onNewChat={handleNewChat} />
         <Routes>
-          <Route index element={<Chat refreshKey={refreshKey} />} />
+          <Route index element={<Chat />} />
           <Route path="settings" element={<SettingsPage />} />
         </Routes>
       </div>
       <AiModelDialog
         open={addModelOpen}
         onOpenChange={setAddModelOpen}
-        onSuccess={handleRefreshProvider}
       />
     </SidebarProvider>
   )
