@@ -43,7 +43,8 @@ export const ChatInput: React.FC<Props> = ({
         value={content}
         onChange={(e) => setContent(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' && !e.shiftKey) {
+          // 中文输入法组合状态时，Enter 用于选择候选词，不发送消息
+          if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
             e.preventDefault()
             handleSend()
           }
