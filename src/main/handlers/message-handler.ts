@@ -1,15 +1,15 @@
 import { ipcMain } from 'electron'
-import { IPC_CHANNELS } from '../../common/constants'
-import { responseSuccess, responseError } from '../../common/response'
+import { IPC_CHANNELS } from '@/common/constants'
+import { responseSuccess, responseError } from '@/common/response'
 import type { CreateMessageData, UpdateMessageData, MessageRole, DbMessageStatus } from '@/types'
 import {
   createMessage,
   updateMessage,
   appendMessageContent,
   listMessages
-} from '../repository/message'
-import { chatSessionExists } from '../repository/chat-session'
-import { logError, logInfo } from '../utils'
+} from '@/main/repository/message'
+import { chatSessionExists } from '@/main/repository/chat-session'
+import { logError, logInfo } from '@/main/utils'
 
 /**
  * Message Handler
@@ -33,12 +33,21 @@ export class MessageHandler {
           totalTokens?: number
         }
       ) => {
+        logInfo('【IPC Handler】message:create called, params:', {
+          sessionId: data.sessionId,
+          role: data.role,
+          contentLength: data.content.length,
+          status: data.status,
+          totalTokens: data.totalTokens
+        })
         try {
           // 验证 sessionId 的有效性
           const sessionId = BigInt(data.sessionId)
           const exists = await chatSessionExists(sessionId)
           if (!exists) {
-            return responseError('Chat session not found')
+            const response = responseError('Chat session not found')
+            logError('【IPC Handler】message:create error, response:', response)
+            return response
           }
 
           const messageData: CreateMessageData = {
@@ -50,11 +59,13 @@ export class MessageHandler {
           }
 
           const message = await createMessage(messageData)
-          logInfo('【IPC Handler】message:create success')
-          return responseSuccess(serializeMessage(message))
+          const response = responseSuccess(serializeMessage(message))
+          logInfo('【IPC Handler】message:create success, response:', response)
+          return response
         } catch (error) {
-          logError('【IPC Handler】message:create error:', error)
-          return responseError(error)
+          const response = responseError(error)
+          logError('【IPC Handler】message:create error, response:', response)
+          return response
         }
       }
     )
@@ -63,13 +74,17 @@ export class MessageHandler {
     ipcMain.handle(
       IPC_CHANNELS.message.update,
       async (_event, data: { id: string; data: UpdateMessageData }) => {
+        logInfo('【IPC Handler】message:update called, params:', data)
         try {
           const id = BigInt(data.id)
           const message = await updateMessage(id, data.data)
-          return responseSuccess(serializeMessage(message))
+          const response = responseSuccess(serializeMessage(message))
+          logInfo('【IPC Handler】message:update success, response:', response)
+          return response
         } catch (error) {
-          logError('【IPC Handler】message:update error:', error)
-          return responseError(error)
+          const response = responseError(error)
+          logError('【IPC Handler】message:update error, response:', response)
+          return response
         }
       }
     )
@@ -78,26 +93,37 @@ export class MessageHandler {
     ipcMain.handle(
       IPC_CHANNELS.message.append,
       async (_event, data: { id: string; content: string }) => {
+        logInfo('【IPC Handler】message:append called, params:', {
+          id: data.id,
+          contentLength: data.content.length
+        })
         try {
           const id = BigInt(data.id)
           const message = await appendMessageContent(id, data.content)
-          return responseSuccess(serializeMessage(message))
+          const response = responseSuccess(serializeMessage(message))
+          logInfo('【IPC Handler】message:append success, response:', response)
+          return response
         } catch (error) {
-          logError('【IPC Handler】message:append error:', error)
-          return responseError(error)
+          const response = responseError(error)
+          logError('【IPC Handler】message:append error, response:', response)
+          return response
         }
       }
     )
 
     // 查询会话的所有消息
     ipcMain.handle(IPC_CHANNELS.message.list, async (_event, data: { sessionId: string }) => {
+      logInfo('【IPC Handler】message:list called, params:', data)
       try {
         const sessionId = BigInt(data.sessionId)
         const messages = await listMessages(sessionId)
-        return responseSuccess(messages.map(serializeMessage))
+        const response = responseSuccess(messages.map(serializeMessage))
+        logInfo('【IPC Handler】message:list success, count:', messages.length)
+        return response
       } catch (error) {
-        logError('【IPC Handler】message:list error:', error)
-        return responseError(error)
+        const response = responseError(error)
+        logError('【IPC Handler】message:list error, response:', response)
+        return response
       }
     })
   }

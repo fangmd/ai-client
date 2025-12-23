@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron'
-import { IPC_CHANNELS } from '../../common/constants'
-import { responseSuccess, responseError } from '../../common/response'
+import { IPC_CHANNELS } from '@/common/constants'
+import { responseSuccess, responseError } from '@/common/response'
+import { logInfo, logError } from '@/main/utils'
 
 /**
  * Test Handler
@@ -13,11 +14,15 @@ export class TestHandler {
   static register(): void {
     // ping 请求处理
     ipcMain.on(IPC_CHANNELS.test.ping, (event) => {
+      logInfo('【IPC Handler】test:ping called')
       try {
-        console.log('pong')
-        event.reply(IPC_CHANNELS.test.pong, responseSuccess({ message: 'pong' }))
+        const response = responseSuccess({ message: 'pong' })
+        logInfo('【IPC Handler】test:ping success, response:', response)
+        event.reply(IPC_CHANNELS.test.pong, response)
       } catch (error) {
-        event.reply(IPC_CHANNELS.test.pong, responseError(error))
+        const response = responseError(error)
+        logError('【IPC Handler】test:ping error, response:', response)
+        event.reply(IPC_CHANNELS.test.pong, response)
       }
     })
   }

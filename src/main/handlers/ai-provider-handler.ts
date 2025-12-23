@@ -1,13 +1,13 @@
 import { ipcMain } from 'electron'
-import { IPC_CHANNELS } from '../../common/constants'
-import { responseSuccess, responseError } from '../../common/response'
+import { IPC_CHANNELS } from '@/common/constants'
+import { responseSuccess, responseError } from '@/common/response'
 import type { CreateAiProviderData } from '@/types'
 import {
   createAiProvider,
   getDefaultAiProvider,
   setDefaultAiProvider
-} from '../repository/ai-provider'
-import { logError, logInfo } from '../utils'
+} from '@/main/repository/ai-provider'
+import { logError, logInfo } from '@/main/utils'
 
 /**
  * AI Provider Handler
@@ -20,6 +20,12 @@ export class AIProviderHandler {
   static register(): void {
     // 创建 AI Provider
     ipcMain.handle(IPC_CHANNELS.aiProvider.create, async (_event, data: CreateAiProviderData) => {
+      logInfo('【IPC Handler】aiProvider:create called, params:', {
+        name: data.name,
+        provider: data.provider,
+        model: data.model,
+        isDefault: data.isDefault
+      })
       try {
         const provider = await createAiProvider(data)
 
@@ -28,14 +34,19 @@ export class AIProviderHandler {
           await setDefaultAiProvider(provider.id)
         }
 
-        return responseSuccess(provider)
+        const response = responseSuccess(provider)
+        logInfo('【IPC Handler】aiProvider:create success, response:', response)
+        return response
       } catch (error) {
-        return responseError(error)
+        const response = responseError(error)
+        logError('【IPC Handler】aiProvider:create error, response:', response)
+        return response
       }
     })
 
     // 获取默认 AI Provider
     ipcMain.handle(IPC_CHANNELS.aiProvider.getDefault, async () => {
+      logInfo('【IPC Handler】aiProvider:getDefault called')
       try {
         const provider = await getDefaultAiProvider()
         const response = responseSuccess(provider)

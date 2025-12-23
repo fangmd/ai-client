@@ -25,12 +25,15 @@ export class ChatSessionHandler {
     ipcMain.handle(
       IPC_CHANNELS.chatSession.create,
       async (_event, data: { title?: string; aiProviderId: string }) => {
+        logInfo('【IPC Handler】chatSession:create called, params:', data)
         try {
           // 验证 aiProviderId 的有效性
           const aiProviderId = BigInt(data.aiProviderId)
           const provider = await getAiProviderById(aiProviderId)
           if (!provider) {
-            return responseError('AI Provider not found')
+            const response = responseError('AI Provider not found')
+            logError('【IPC Handler】chatSession:create error, response:', response)
+            return response
           }
 
           const sessionData: CreateChatSessionData = {
@@ -39,11 +42,13 @@ export class ChatSessionHandler {
           }
 
           const session = await createChatSession(sessionData)
-          logInfo('【IPC Handler】chatSession:create success')
-          return responseSuccess(serializeChatSession(session))
+          const response = responseSuccess(serializeChatSession(session))
+          logInfo('【IPC Handler】chatSession:create success, response:', response)
+          return response
         } catch (error) {
-          logError('【IPC Handler】chatSession:create error:', error)
-          return responseError(error)
+          const response = responseError(error)
+          logError('【IPC Handler】chatSession:create error, response:', response)
+          return response
         }
       }
     )
@@ -52,33 +57,43 @@ export class ChatSessionHandler {
     ipcMain.handle(
       IPC_CHANNELS.chatSession.list,
       async (_event, options?: { limit?: number; offset?: number }) => {
+        logInfo('【IPC Handler】chatSession:list called, params:', options)
         try {
           const sessions = await listChatSessions(options)
-          return responseSuccess(sessions.map(serializeChatSession))
+          const response = responseSuccess(sessions.map(serializeChatSession))
+          logInfo('【IPC Handler】chatSession:list success, count:', sessions.length)
+          return response
         } catch (error) {
-          logError('【IPC Handler】chatSession:list error:', error)
-          return responseError(error)
+          const response = responseError(error)
+          logError('【IPC Handler】chatSession:list error, response:', response)
+          return response
         }
       }
     )
 
     // 查询单个对话（包含消息）
     ipcMain.handle(IPC_CHANNELS.chatSession.get, async (_event, data: { id: string }) => {
+      logInfo('【IPC Handler】chatSession:get called, params:', data)
       try {
         const id = BigInt(data.id)
         const session = await getChatSessionById(id)
 
         if (!session) {
-          return responseError('Chat session not found')
+          const response = responseError('Chat session not found')
+          logError('【IPC Handler】chatSession:get error, response:', response)
+          return response
         }
 
-        return responseSuccess({
+        const response = responseSuccess({
           ...serializeChatSession(session),
           messages: session.messages.map(serializeMessage)
         })
+        logInfo('【IPC Handler】chatSession:get success, messagesCount:', session.messages.length)
+        return response
       } catch (error) {
-        logError('【IPC Handler】chatSession:get error:', error)
-        return responseError(error)
+        const response = responseError(error)
+        logError('【IPC Handler】chatSession:get error, response:', response)
+        return response
       }
     })
 
@@ -86,28 +101,34 @@ export class ChatSessionHandler {
     ipcMain.handle(
       IPC_CHANNELS.chatSession.update,
       async (_event, data: { id: string; data: UpdateChatSessionData }) => {
+        logInfo('【IPC Handler】chatSession:update called, params:', data)
         try {
           const id = BigInt(data.id)
           const session = await updateChatSession(id, data.data)
-          logInfo('【IPC Handler】chatSession:update success')
-          return responseSuccess(serializeChatSession(session))
+          const response = responseSuccess(serializeChatSession(session))
+          logInfo('【IPC Handler】chatSession:update success, response:', response)
+          return response
         } catch (error) {
-          logError('【IPC Handler】chatSession:update error:', error)
-          return responseError(error)
+          const response = responseError(error)
+          logError('【IPC Handler】chatSession:update error, response:', response)
+          return response
         }
       }
     )
 
     // 删除对话
     ipcMain.handle(IPC_CHANNELS.chatSession.delete, async (_event, data: { id: string }) => {
+      logInfo('【IPC Handler】chatSession:delete called, params:', data)
       try {
         const id = BigInt(data.id)
         await deleteChatSession(id)
-        logInfo('【IPC Handler】chatSession:delete success')
-        return responseSuccess()
+        const response = responseSuccess()
+        logInfo('【IPC Handler】chatSession:delete success, response:', response)
+        return response
       } catch (error) {
-        logError('【IPC Handler】chatSession:delete error:', error)
-        return responseError(error)
+        const response = responseError(error)
+        logError('【IPC Handler】chatSession:delete error, response:', response)
+        return response
       }
     })
   }
