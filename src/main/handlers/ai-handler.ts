@@ -1,8 +1,9 @@
 import { ipcMain } from 'electron'
-import { IPC_CHANNELS } from '../../common/constants'
-import type { IPCResponse } from '../../preload/types'
-import { AIProviderFactory } from '../providers'
-import type { Message, AIConfig } from '@/types/chat'
+import { IPC_CHANNELS } from '@/common/constants'
+import { responseSuccess, responseError } from '@/common/response'
+import { AIProviderFactory } from '@/main/providers'
+import { logInfo, logError, logDebug } from '@/main/utils'
+import type { Message, AIConfig } from '@/types'
 
 /**
  * 存储活跃的请求，用于取消功能
@@ -26,6 +27,13 @@ export class AIHandler {
         requestId: string
       }
 
+      logInfo('【IPC Handler】ai:streamChat called, params:', {
+        requestId,
+        messagesCount: messages.length,
+        provider: config.provider,
+        model: config.model
+      })
+
       try {
         // 创建 AbortController 用于取消请求
         const abortController = new AbortController()
@@ -36,13 +44,11 @@ export class AIHandler {
 
         // 验证配置
         if (!provider.validateConfig(config)) {
-          const response: IPCResponse = {
-            code: -1,
-            msg: 'Invalid AI configuration'
-          }
+          const errorResponse = responseError('Invalid AI configuration')
+          logError('【IPC Handler】ai:streamChat error - Invalid config, requestId:', requestId)
           event.reply(IPC_CHANNELS.ai.streamError, {
             requestId,
-            ...response
+            ...errorResponse
           })
           activeRequests.delete(requestId)
           return
@@ -55,6 +61,7 @@ export class AIHandler {
           {
             onChunk: (chunk: string) => {
               // 发送数据块
+              logDebug('【IPC Handler】ai:streamChunk, requestId:', requestId, 'chunkLength:', chunk.length)
               event.sender.send(IPC_CHANNELS.ai.streamChunk, {
                 requestId,
                 chunk
@@ -62,6 +69,7 @@ export class AIHandler {
             },
             onDone: () => {
               // 发送完成事件
+              logInfo('【IPC Handler】ai:streamDone, requestId:', requestId)
               event.sender.send(IPC_CHANNELS.ai.streamDone, {
                 requestId
               })
@@ -69,13 +77,10 @@ export class AIHandler {
             },
             onError: (error: Error) => {
               // 发送错误事件
-              const response: IPCResponse = {
-                code: -1,
-                msg: error.message
-              }
+              logError('【IPC Handler】ai:streamError, requestId:', requestId, 'error:', error.message)
               event.sender.send(IPC_CHANNELS.ai.streamError, {
                 requestId,
-                ...response
+                ...responseError(error)
               })
               activeRequests.delete(requestId)
             }
@@ -83,13 +88,10 @@ export class AIHandler {
           abortController.signal
         )
       } catch (error) {
-        const response: IPCResponse = {
-          code: -1,
-          msg: error instanceof Error ? error.message : 'Unknown error'
-        }
+        logError('【IPC Handler】ai:streamChat exception, requestId:', requestId, 'error:', error)
         event.sender.send(IPC_CHANNELS.ai.streamError, {
           requestId,
-          ...response
+          ...responseError(error)
         })
         activeRequests.delete(requestId)
       }
@@ -98,22 +100,18 @@ export class AIHandler {
     // 取消聊天请求处理
     ipcMain.on(IPC_CHANNELS.ai.cancelChat, (event, request) => {
       const { requestId } = request as { requestId: string }
+      logInfo('【IPC Handler】ai:cancelChat called, params:', { requestId })
 
       const abortController = activeRequests.get(requestId)
       if (abortController) {
         abortController.abort()
         activeRequests.delete(requestId)
-
-        const response: IPCResponse<void> = {
-          code: 0,
-          msg: 'Request cancelled'
-        }
+        const response = responseSuccess(undefined, 'Request cancelled')
+        logInfo('【IPC Handler】ai:cancelChat success, response:', response)
         event.reply(IPC_CHANNELS.ai.cancelChat, response)
       } else {
-        const response: IPCResponse<void> = {
-          code: -1,
-          msg: 'Request not found'
-        }
+        const response = responseError('Request not found')
+        logError('【IPC Handler】ai:cancelChat error, response:', response)
         event.reply(IPC_CHANNELS.ai.cancelChat, response)
       }
     })

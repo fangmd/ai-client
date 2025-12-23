@@ -1,6 +1,6 @@
 import { Streamdown } from 'streamdown'
-import remarkGfm from 'remark-gfm'
-import { components } from './markdown-viewer'
+// import remarkGfm from 'remark-gfm'
+// import { components } from './markdown-viewer'
 import clsx from 'clsx'
 import { Check, Copy } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
@@ -17,9 +17,8 @@ export const MessageItem: React.FC<Props> = ({ message }) => {
   if (message.role === 'assistant') {
     return (
       <div className={clsx('markdown-body', 'pb-[20px] w-full')} key={message.id}>
-        <Streamdown remarkPlugins={[remarkGfm]} components={components as any}>
-          {message.content}
-        </Streamdown>
+        {/* remarkPlugins={[remarkGfm]} components={components as any} */}
+        <Streamdown isAnimating={message.status === 'sending'}>{message.content}</Streamdown>
       </div>
     )
   }

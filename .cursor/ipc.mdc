@@ -24,15 +24,20 @@ alwaysApply: true
 - 统一使用 `IPCResponse<T>` 接口
 - 格式：`{ code: number, data?: T, msg: string }`
 - `code: 0` 表示成功，`code: -1` 表示失败
-- 位置：`src/preload/types.ts`
+- 类型定义位置：`src/preload/types.ts`
+- **必须使用工具函数构建响应**：
+  - `responseSuccess<T>(data?, msg?)` - 创建成功响应
+  - `responseError(error, code?)` - 创建错误响应
+  - 工具函数位置：`src/common/response.ts`
 
 ### 3. Handler 实现
 - 文件命名：`xxx-handler.ts` (kebab-case)
 - 使用静态类方法：`static register()` 和 `static unregister()`
 - 必须使用 try-catch 包裹，返回标准 `IPCResponse` 格式
 - 必须从 `IPC_CHANNELS` 导入通道常量
-- 成功响应：`{ code: 0, data: result, msg: 'success' }`
-- 错误响应：`{ code: -1, msg: error.message }`
+- **必须使用工具函数构建响应**：
+  - 成功响应：`return responseSuccess(data)` 或 `return responseSuccess(data, 'custom message')`
+  - 错误响应：`return responseError(error)` 或 `return responseError('error message', customCode)`
 - **优先使用 `ipcMain.handle` 直接返回结果**：如果函数能直接返回结果，使用 `ipcMain.handle` 并直接 `return`，不要使用 `event.reply`
 - **流式/事件式通信才使用 `ipcMain.on`**：只有在需要流式传输、多次事件推送或需要主动推送消息时，才使用 `ipcMain.on` + `event.reply`
 
@@ -61,26 +66,23 @@ alwaysApply: true
 
 ```typescript
 import { ipcMain } from 'electron'
-import { IPC_CHANNELS } from '../../common/constants'
-import type { IPCResponse } from '../../preload/types'
+import { IPC_CHANNELS } from '@/common/constants'
+import { responseSuccess, responseError } from '@/common/response'
+import { logInfo, logError } from '@/main/utils'
 
 export class XxxHandler {
   static register(): void {
     // 使用 handle 直接返回结果
     ipcMain.handle(IPC_CHANNELS.xxx.action, async (_event, data: RequestData) => {
+      logInfo('【IPC Handler】xxx:action called, params:', data)
       try {
         const result = await someAsyncOperation(data)
-        const response: IPCResponse<DataType> = {
-          code: 0,
-          data: result,
-          msg: 'success'
-        }
+        const response = responseSuccess(result)
+        logInfo('【IPC Handler】xxx:action success, response:', response)
         return response
       } catch (error) {
-        const response: IPCResponse = {
-          code: -1,
-          msg: error instanceof Error ? error.message : 'Unknown error'
-        }
+        const response = responseError(error)
+        logError('【IPC Handler】xxx:action error, response:', response)
         return response
       }
     })
@@ -121,31 +123,48 @@ if (response.code === SUCCESS_CODE) {
 
 ```typescript
 import { ipcMain } from 'electron'
-import { IPC_CHANNELS } from '../../common/constants'
-import type { IPCResponse } from '../../preload/types'
+import { IPC_CHANNELS } from '@/common/constants'
+import { responseSuccess, responseError } from '@/common/response'
+import { logInfo, logError, logDebug } from '@/main/utils'
 
 export class StreamHandler {
   static register(): void {
     // 流式传输示例
     ipcMain.on(IPC_CHANNELS.xxx.streamStart, async (event, data) => {
+      logInfo('【IPC Handler】xxx:streamStart called, params:', data)
       try {
         // 流式发送多个数据块
         for (const chunk of streamData) {
+          logDebug('【IPC Handler】xxx:streamChunk, chunkLength:', chunk.length)
           event.sender.send(IPC_CHANNELS.xxx.streamChunk, { chunk })
         }
+        logInfo('【IPC Handler】xxx:streamDone')
         event.sender.send(IPC_CHANNELS.xxx.streamDone, {})
       } catch (error) {
-        const response: IPCResponse = {
-          code: -1,
-          msg: error instanceof Error ? error.message : 'Unknown error'
-        }
-        event.sender.send(IPC_CHANNELS.xxx.streamError, response)
+        logError('【IPC Handler】xxx:streamError, error:', error)
+        event.sender.send(IPC_CHANNELS.xxx.streamError, responseError(error))
+      }
+    })
+
+    // 需要回复成功/失败的事件式通信
+    ipcMain.on(IPC_CHANNELS.xxx.action, (event, data) => {
+      logInfo('【IPC Handler】xxx:action called, params:', data)
+      try {
+        // 处理逻辑
+        const response = responseSuccess(result)
+        logInfo('【IPC Handler】xxx:action success, response:', response)
+        event.reply(IPC_CHANNELS.xxx.actionReply, response)
+      } catch (error) {
+        const response = responseError(error)
+        logError('【IPC Handler】xxx:action error, response:', response)
+        event.reply(IPC_CHANNELS.xxx.actionReply, response)
       }
     })
   }
 
   static unregister(): void {
     ipcMain.removeAllListeners(IPC_CHANNELS.xxx.streamStart)
+    ipcMain.removeAllListeners(IPC_CHANNELS.xxx.action)
   }
 }
 ```
@@ -209,13 +228,95 @@ const unsubscribeDone = window.electron.ipcRenderer.on(
 ✅ 主进程主动推送消息给渲染进程
 ✅ 不需要等待结果的单向通信
 
+## IPC 日志规范
+
+### 1. 日志工具
+- 使用 `@/main/utils` 中的日志函数：`logInfo`, `logError`, `logDebug`, `logWarn`
+- 禁止使用 `console.log` 等原生方法
+
+### 2. 日志格式
+- 统一使用 `【IPC Handler】` 前缀，便于过滤和识别
+- **调用日志**：`【IPC Handler】<channel> called, params: <params>`
+- **成功日志**：`【IPC Handler】<channel> success, response: <response>`
+- **错误日志**：`【IPC Handler】<channel> error, response: <response>`
+
+### 3. 日志规则
+- **函数入口**：必须打印调用日志和参数
+- **函数返回**：必须打印返回数据日志
+- **敏感数据处理**：
+  - 对于大内容字段（如消息内容），只打印长度而非完整内容
+  - AI 配置只打印关键字段（provider、model），不打印 apiKey
+- **流式数据**：使用 `logDebug` 记录 chunk，避免日志过多
+
+### 4. 日志示例
+
+```typescript
+import { logInfo, logError, logDebug } from '@/main/utils'
+
+// 调用日志（函数入口）
+logInfo('【IPC Handler】ai:streamChat called, params:', {
+  requestId,
+  messagesCount: messages.length,
+  provider: config.provider,
+  model: config.model
+})
+
+// 成功日志
+const response = responseSuccess(data)
+logInfo('【IPC Handler】chatSession:create success, response:', response)
+
+// 错误日志
+const response = responseError(error)
+logError('【IPC Handler】chatSession:create error, response:', response)
+
+// 流式数据日志（使用 debug 级别）
+logDebug('【IPC Handler】ai:streamChunk, requestId:', requestId, 'chunkLength:', chunk.length)
+
+// 列表查询成功日志（打印数量而非完整数据）
+logInfo('【IPC Handler】chatSession:list success, count:', sessions.length)
+```
+
+### 5. Handler 实现模板（带日志）
+
+```typescript
+import { ipcMain } from 'electron'
+import { IPC_CHANNELS } from '@/common/constants'
+import { responseSuccess, responseError } from '@/common/response'
+import { logInfo, logError } from '@/main/utils'
+
+export class XxxHandler {
+  static register(): void {
+    ipcMain.handle(IPC_CHANNELS.xxx.action, async (_event, data: RequestData) => {
+      logInfo('【IPC Handler】xxx:action called, params:', data)
+      try {
+        const result = await someAsyncOperation(data)
+        const response = responseSuccess(result)
+        logInfo('【IPC Handler】xxx:action success, response:', response)
+        return response
+      } catch (error) {
+        const response = responseError(error)
+        logError('【IPC Handler】xxx:action error, response:', response)
+        return response
+      }
+    })
+  }
+
+  static unregister(): void {
+    ipcMain.removeHandler(IPC_CHANNELS.xxx.action)
+  }
+}
+```
+
 ## 禁止事项
 
 - ❌ 禁止硬编码通道名称字符串
 - ❌ 禁止直接使用 `window.electron.ipcRenderer.send('test:ping')`
 - ❌ 禁止在 Handler 中不使用 try-catch
 - ❌ 禁止返回非标准响应格式
+- ❌ **禁止手动构建 `IPCResponse` 对象**：必须使用 `responseSuccess()` 和 `responseError()` 工具函数
 - ❌ 禁止使用 camelCase 或 snake_case 命名文件
 - ❌ 禁止使用 `window.api.*` 相关 API，应直接使用 `window.electron.ipcRenderer` 进行 IPC 通信，并通过导入 `IPC_CHANNELS` 获取通道名称
 - ❌ **禁止在能直接返回结果时使用 `ipcMain.on` + `event.reply`**：如果函数能直接返回结果，必须使用 `ipcMain.handle` 并直接 `return`，不要使用监听方式
 - ❌ **禁止在能直接返回结果时使用 `send` + `on`**：如果主进程能直接返回结果，必须使用 `ipcRenderer.invoke` 获取 Promise，不要使用 `send` + `on` 的方式
+- ❌ **禁止在 Handler 中使用 `console.log`**：必须使用 `@/main/utils` 中的日志函数
+- ❌ **禁止在 Handler 中不打印日志**：入口必须打印调用参数，返回必须打印响应数据

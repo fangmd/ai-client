@@ -1,4 +1,10 @@
-// AI Provider 类型定义（与 Prisma schema 保持一致）
+import type { Prisma } from '@prisma/client'
+
+// ==================== AI Provider 类型定义 ====================
+
+/**
+ * AI Provider 类型（数据库实体，与 Prisma schema 保持一致）
+ */
 export interface AiProvider {
   id: bigint
   name: string | null
@@ -14,7 +20,9 @@ export interface AiProvider {
   updatedAt: Date
 }
 
-// AI Provider 创建数据（与 Prisma.AiProviderCreateInput 保持一致）
+/**
+ * AI Provider 创建数据（与 Prisma.AiProviderCreateInput 保持一致）
+ */
 export interface CreateAiProviderData {
   name?: string | null
   provider: string
@@ -26,3 +34,8 @@ export interface CreateAiProviderData {
   organization?: string | null
   isDefault?: boolean
 }
+
+/**
+ * AI Provider 更新数据（基于 Prisma 类型）
+ */
+export type UpdateAiProviderData = Prisma.AiProviderUpdateInput

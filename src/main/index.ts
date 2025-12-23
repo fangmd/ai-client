@@ -4,6 +4,7 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { registerHandlers, unregisterHandlers } from './handlers'
 import { initializeDatabase } from './common/db/prisma'
+import { initializeLogger, logError, logInfo } from './utils'
 ;(BigInt.prototype as any).toJSON = function () {
   return this.toString()
 }
@@ -51,12 +52,19 @@ app.whenReady().then(async () => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
 
+  logInfo('initialize app')
+  // 初始化日志
+  initializeLogger(app.getPath('userData'))
+  logInfo('initialize logger success')
+
+  logInfo('initialize database', Date.now())
   // 初始化数据库
   try {
     // TODO: 优化性能，数据库初始化慢
     await initializeDatabase()
+    logInfo('initialize database success', Date.now())
   } catch (error) {
-    console.error('Failed to initialize database:', error)
+    logError('Failed to initialize database:', error)
   }
 
   // Default open or close DevTools by F12 in development

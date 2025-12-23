@@ -6,11 +6,6 @@ export const ERROR_CODE = -1
  * 命名规范：模块名:操作名
  */
 export const IPC_CHANNELS = {
-  // Test 模块
-  test: {
-    ping: 'test:ping',
-    pong: 'test:pong'
-  },
   // AI 模块
   ai: {
     // 请求流式聊天
@@ -26,7 +21,37 @@ export const IPC_CHANNELS = {
   aiProvider: {
     // 创建 AI Provider
     create: 'ai-provider:create',
+    // 获取所有 AI Provider
+    list: 'ai-provider:list',
     // 获取默认 AI Provider
-    getDefault: 'ai-provider:get-default'
+    getDefault: 'ai-provider:get-default',
+    // 更新 AI Provider
+    update: 'ai-provider:update',
+    // 删除 AI Provider
+    delete: 'ai-provider:delete',
+    // 设置默认 AI Provider
+    setDefault: 'ai-provider:set-default'
+  },
+  // Chat Session 模块
+  chatSession: {
+    create: 'chat-session:create',
+    list: 'chat-session:list',
+    get: 'chat-session:get',
+    update: 'chat-session:update',
+    delete: 'chat-session:delete'
+  },
+  // Message 模块
+  message: {
+    create: 'message:create',
+    update: 'message:update',
+    list: 'message:list',
+    append: 'message:append'
+  },
+  // Config 模块
+  config: {
+    get: 'config:get',
+    getAll: 'config:get-all',
+    set: 'config:set',
+    delete: 'config:delete'
   }
 } as const

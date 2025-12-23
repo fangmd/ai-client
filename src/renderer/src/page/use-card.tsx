@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { generateMessageId, type ChatStatus } from '@renderer/hooks/use-bailian'
-import { Message } from '@/types/chat'
+import { Message } from '@/types/chat-type'
 
 export const useCard = ({
   apiURL,

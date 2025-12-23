@@ -1,18 +1,22 @@
 import { Routes, Route } from 'react-router-dom'
-import { ChatWindow } from './components/ChatWindow'
 import { Home } from './page/home'
-import { ThemeProvider } from './components/theme-provider'
-import { Test } from './page/test'
+import { useConfigStore } from './stores/configStore'
+import { useAiProviderStore } from './stores/ai-provider-store'
+import { useEffect } from 'react'
 
 function App(): React.JSX.Element {
+  const loadConfig = useConfigStore((state) => state.loadConfig)
+  const loadProviders = useAiProviderStore((state) => state.loadProviders)
+
+  useEffect(() => {
+    loadConfig()
+    loadProviders()
+  }, [loadConfig, loadProviders])
+
   return (
-    <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
-      <Routes>
-        <Route path="/" element={<Home />} />
-        {/* <Route path="/" element={<Test />} /> */}
-        <Route path="/2" element={<ChatWindow />} />
-      </Routes>
-    </ThemeProvider>
+    <Routes>
+      <Route path="/*" element={<Home />} />
+    </Routes>
   )
 }
 
