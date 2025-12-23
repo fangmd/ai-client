@@ -1,6 +1,6 @@
 import { Button } from '@renderer/components/ui/button'
 import { useState } from 'react'
-import type { IPCResponse } from '@/preload/types'
+import type { IPCResponse } from '@/types'
 import { SUCCESS_CODE, IPC_CHANNELS } from '@/common/constants/ipc'
 
 export const Test: React.FC = () => {

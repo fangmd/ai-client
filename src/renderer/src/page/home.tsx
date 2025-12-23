@@ -6,7 +6,7 @@ import { AppSidebar } from '@renderer/components/AppSidebar'
 import { Chat } from '@renderer/page/chat'
 import type { AIConfig } from '@/types/chat-type'
 import type { AiProvider } from '@/types/ai-provider-type'
-import type { IPCResponse } from '@/preload/types'
+import type { IPCResponse } from '@/types'
 import { IPC_CHANNELS, SUCCESS_CODE } from '@/common/constants/ipc'
 
 export const Home: React.FC = () => {

@@ -9,7 +9,7 @@ import {
 } from '@renderer/components/ui/dialog'
 import { Button } from '@renderer/components/ui/button'
 import type { CreateAiProviderData, AiProvider } from '@/types/ai-provider-type'
-import type { IPCResponse } from '@/preload/types'
+import type { IPCResponse } from '@/types'
 import { IPC_CHANNELS, SUCCESS_CODE } from '@/common/constants/ipc'
 
 interface AddAiModelDialogProps {

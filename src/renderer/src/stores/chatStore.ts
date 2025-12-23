@@ -4,7 +4,7 @@ import type {
   IPCResponse,
   SerializedChatSession,
   SerializedMessage
-} from '@/preload/types'
+} from '@/types'
 import { IPC_CHANNELS, SUCCESS_CODE } from '@/common/constants/ipc'
 
 /**

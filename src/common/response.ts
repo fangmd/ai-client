@@ -1,4 +1,4 @@
-import type { IPCResponse } from '../preload/types'
+import type { IPCResponse } from '../types'
 import { SUCCESS_CODE, ERROR_CODE } from './constants/ipc'
 
 /**
