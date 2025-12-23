@@ -26,8 +26,14 @@ export const IPC_CHANNELS = {
   aiProvider: {
     // 创建 AI Provider
     create: 'ai-provider:create',
+    // 获取所有 AI Provider
+    list: 'ai-provider:list',
     // 获取默认 AI Provider
-    getDefault: 'ai-provider:get-default'
+    getDefault: 'ai-provider:get-default',
+    // 删除 AI Provider
+    delete: 'ai-provider:delete',
+    // 设置默认 AI Provider
+    setDefault: 'ai-provider:set-default'
   },
   // Chat Session 模块
   chatSession: {

@@ -4,8 +4,10 @@ import { responseSuccess, responseError } from '@/common/response'
 import type { CreateAiProviderData } from '@/types'
 import {
   createAiProvider,
+  getAllAiProviders,
   getDefaultAiProvider,
-  setDefaultAiProvider
+  setDefaultAiProvider,
+  deleteAiProvider
 } from '@/main/repository/ai-provider'
 import { logError, logInfo } from '@/main/utils'
 
@@ -44,6 +46,21 @@ export class AIProviderHandler {
       }
     })
 
+    // 获取所有 AI Provider
+    ipcMain.handle(IPC_CHANNELS.aiProvider.list, async () => {
+      logInfo('【IPC Handler】aiProvider:list called')
+      try {
+        const providers = await getAllAiProviders()
+        const response = responseSuccess(providers)
+        logInfo('【IPC Handler】aiProvider:list success, count:', providers.length)
+        return response
+      } catch (error) {
+        const response = responseError(error)
+        logError('【IPC Handler】aiProvider:list error, response:', response)
+        return response
+      }
+    })
+
     // 获取默认 AI Provider
     ipcMain.handle(IPC_CHANNELS.aiProvider.getDefault, async () => {
       logInfo('【IPC Handler】aiProvider:getDefault called')
@@ -58,6 +75,36 @@ export class AIProviderHandler {
         return response
       }
     })
+
+    // 删除 AI Provider
+    ipcMain.handle(IPC_CHANNELS.aiProvider.delete, async (_event, id: bigint) => {
+      logInfo('【IPC Handler】aiProvider:delete called, id:', id)
+      try {
+        await deleteAiProvider(id)
+        const response = responseSuccess(null)
+        logInfo('【IPC Handler】aiProvider:delete success')
+        return response
+      } catch (error) {
+        const response = responseError(error)
+        logError('【IPC Handler】aiProvider:delete error, response:', response)
+        return response
+      }
+    })
+
+    // 设置默认 AI Provider
+    ipcMain.handle(IPC_CHANNELS.aiProvider.setDefault, async (_event, id: bigint) => {
+      logInfo('【IPC Handler】aiProvider:setDefault called, id:', id)
+      try {
+        const provider = await setDefaultAiProvider(id)
+        const response = responseSuccess(provider)
+        logInfo('【IPC Handler】aiProvider:setDefault success')
+        return response
+      } catch (error) {
+        const response = responseError(error)
+        logError('【IPC Handler】aiProvider:setDefault error, response:', response)
+        return response
+      }
+    })
   }
 
   /**
@@ -65,6 +112,9 @@ export class AIProviderHandler {
    */
   static unregister(): void {
     ipcMain.removeHandler(IPC_CHANNELS.aiProvider.create)
+    ipcMain.removeHandler(IPC_CHANNELS.aiProvider.list)
     ipcMain.removeHandler(IPC_CHANNELS.aiProvider.getDefault)
+    ipcMain.removeHandler(IPC_CHANNELS.aiProvider.delete)
+    ipcMain.removeHandler(IPC_CHANNELS.aiProvider.setDefault)
   }
 }

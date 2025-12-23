@@ -1,5 +1,6 @@
 import { useConfigStore } from '@renderer/stores/configStore'
 import { Button } from '@renderer/components/ui/button'
+import { AiModelList } from '@renderer/components/AiModelList'
 import { Sun, Moon, Monitor, Check } from 'lucide-react'
 import type { ThemeMode } from '@/types'
 
@@ -49,6 +50,9 @@ export const SettingsPage: React.FC = () => {
             </div>
           </div>
         </section>
+
+        {/* 大模型设置 */}
+        <AiModelList />
       </div>
     </div>
   )
