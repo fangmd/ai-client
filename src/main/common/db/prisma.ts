@@ -53,7 +53,12 @@ function createPrismaClient(): PrismaClient {
     url: databaseUrl
   })
 
-  return new PrismaClient({ adapter })
+  // 开发模式下开启 SQL 日志
+  const isDev = !app.isPackaged
+  return new PrismaClient({
+    adapter,
+    log: isDev ? ['query', 'info', 'warn', 'error'] : ['warn', 'error']
+  })
 }
 
 /**

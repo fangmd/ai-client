@@ -19,7 +19,7 @@ export class ConfigHandler {
       try {
         const config = await getConfig(key)
         const response = responseSuccess(config)
-        logInfo('【IPC Handler】config:get success')
+        logInfo('【IPC Handler】config:get success, response:', response)
         return response
       } catch (error) {
         const response = responseError(error)
@@ -34,7 +34,7 @@ export class ConfigHandler {
       try {
         const configs = await getAllConfigs()
         const response = responseSuccess(configs)
-        logInfo('【IPC Handler】config:getAll success')
+        logInfo('【IPC Handler】config:getAll success, response:', response)
         return response
       } catch (error) {
         const response = responseError(error)
@@ -47,11 +47,11 @@ export class ConfigHandler {
     ipcMain.handle(
       IPC_CHANNELS.config.set,
       async (_event, data: { key: string; value: string }) => {
-        logInfo('【IPC Handler】config:set called, key:', data.key)
+        logInfo('【IPC Handler】config:set called, key:', data.key, 'value:', data.value)
         try {
           const config = await setConfig(data.key, data.value)
           const response = responseSuccess(config)
-          logInfo('【IPC Handler】config:set success')
+          logInfo('【IPC Handler】config:set success, response:', response)
           return response
         } catch (error) {
           const response = responseError(error)
@@ -67,7 +67,7 @@ export class ConfigHandler {
       try {
         await deleteConfig(key)
         const response = responseSuccess(null)
-        logInfo('【IPC Handler】config:delete success')
+        logInfo('【IPC Handler】config:delete success, response:', response)
         return response
       } catch (error) {
         const response = responseError(error)
@@ -87,4 +87,3 @@ export class ConfigHandler {
     ipcMain.removeHandler(IPC_CHANNELS.config.delete)
   }
 }
-

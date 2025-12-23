@@ -1,4 +1,4 @@
-import { useTheme } from '@renderer/components/theme-provider'
+import { useConfigStore } from '@renderer/stores/configStore'
 import { Button } from '@renderer/components/ui/button'
 import { Sun, Moon, Monitor, Check } from 'lucide-react'
 import type { ThemeMode } from '@/types'
@@ -16,7 +16,7 @@ const themeOptions: ThemeOption[] = [
 ]
 
 export const SettingsPage: React.FC = () => {
-  const { theme, setTheme } = useTheme()
+  const { theme, setTheme } = useConfigStore()
 
   return (
     <div className="flex-1 p-8 bg-background overflow-y-auto">

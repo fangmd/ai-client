@@ -1,14 +1,19 @@
 import { Routes, Route } from 'react-router-dom'
 import { Home } from './page/home'
-import { ThemeProvider } from './components/theme-provider'
+import { useConfigStore } from './stores/configStore'
+import { useEffect } from 'react'
 
 function App(): React.JSX.Element {
+  const loadConfig = useConfigStore((state) => state.loadConfig)
+
+  useEffect(() => {
+    loadConfig()
+  }, [loadConfig])
+
   return (
-    <ThemeProvider>
-      <Routes>
-        <Route path="/*" element={<Home />} />
-      </Routes>
-    </ThemeProvider>
+    <Routes>
+      <Route path="/*" element={<Home />} />
+    </Routes>
   )
 }
 
