@@ -5,7 +5,7 @@ import { ThemeProvider } from './components/theme-provider'
 
 function App(): React.JSX.Element {
   return (
-    <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
+    <ThemeProvider>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/2" element={<ChatWindow />} />

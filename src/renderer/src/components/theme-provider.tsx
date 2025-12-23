@@ -1,21 +1,21 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-
-type Theme = 'dark' | 'light' | 'system'
+import { useConfigStore } from '@renderer/stores/configStore'
+import type { ThemeMode } from '@/types'
 
 type ThemeProviderProps = {
   children: React.ReactNode
-  defaultTheme?: Theme
+  defaultTheme?: ThemeMode
   storageKey?: string
 }
 
 type ThemeProviderState = {
-  theme: Theme
-  setTheme: (theme: Theme) => void
+  theme: ThemeMode
+  setTheme: (theme: ThemeMode) => void
 }
 
 const initialState: ThemeProviderState = {
   theme: 'system',
-  setTheme: () => null,
+  setTheme: () => null
 }
 
 const ThemeProviderContext = createContext<ThemeProviderState>(initialState)
@@ -23,10 +23,28 @@ const ThemeProviderContext = createContext<ThemeProviderState>(initialState)
 export function ThemeProvider({
   children,
   defaultTheme = 'system',
-  storageKey = 'vite-ui-theme',
+  storageKey = 'ai-client-theme',
   ...props
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem(storageKey) as Theme) || defaultTheme)
+  const { theme: storeTheme, loadConfig, setTheme: setStoreTheme } = useConfigStore()
+  const [theme, setThemeState] = useState<ThemeMode>(
+    () => (localStorage.getItem(storageKey) as ThemeMode) || defaultTheme
+  )
+  const [isLoaded, setIsLoaded] = useState(false)
+
+  // 初始化时从数据库加载配置
+  useEffect(() => {
+    loadConfig().then(() => {
+      setIsLoaded(true)
+    })
+  }, [loadConfig])
+
+  // 当 store 中的主题更新时，同步到本地状态
+  useEffect(() => {
+    if (isLoaded) {
+      setThemeState(storeTheme)
+    }
+  }, [storeTheme, isLoaded])
 
   useEffect(() => {
     const root = window.document.documentElement
@@ -35,7 +53,9 @@ export function ThemeProvider({
       root.classList.remove('light', 'dark')
 
       if (theme === 'system') {
-        const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+        const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
+          ? 'dark'
+          : 'light'
         root.classList.add(systemTheme)
         return
       }
@@ -49,28 +69,29 @@ export function ThemeProvider({
     // 如果主题是 'system'，监听系统主题变化
     if (theme === 'system') {
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-      
-      // 使用 addEventListener 监听变化（现代浏览器推荐方式）
+
       const handleChange = () => {
         applyTheme()
       }
 
-      // 兼容性处理：优先使用 addEventListener，否则使用 addListener
-      if (mediaQuery.addEventListener) {
-        mediaQuery.addEventListener('change', handleChange)
-        return () => {
-          mediaQuery.removeEventListener('change', handleChange)
-        }
+      mediaQuery.addEventListener('change', handleChange)
+      return () => {
+        mediaQuery.removeEventListener('change', handleChange)
       }
     }
+    return undefined
   }, [theme])
+
+  const setTheme = (newTheme: ThemeMode) => {
+    // 同时更新 localStorage（向后兼容）和数据库
+    localStorage.setItem(storageKey, newTheme)
+    setThemeState(newTheme)
+    setStoreTheme(newTheme)
+  }
 
   const value = {
     theme,
-    setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme)
-      setTheme(theme)
-    },
+    setTheme
   }
 
   return (

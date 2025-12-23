@@ -43,5 +43,12 @@ export const IPC_CHANNELS = {
     update: 'message:update',
     list: 'message:list',
     append: 'message:append'
+  },
+  // Config 模块
+  config: {
+    get: 'config:get',
+    getAll: 'config:get-all',
+    set: 'config:set',
+    delete: 'config:delete'
   }
 } as const

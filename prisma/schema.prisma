@@ -55,3 +55,12 @@ model Message {
   @@index([createdAt])
   @@map("message")
 }
+
+model Config {
+  key       String   @id // 配置键（唯一标识）
+  value     String // 配置值（JSON 字符串）
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("config")
+}
