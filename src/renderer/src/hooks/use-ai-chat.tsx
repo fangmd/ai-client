@@ -2,16 +2,9 @@ import { useRef, useEffect } from 'react'
 import type { AIConfig } from '@/types/chat'
 import type { IPCResponse } from '@/preload/types'
 import { IPC_CHANNELS } from '@/common/constants/ipc'
-import { useChatStore, type Message } from '@renderer/stores/chatStore'
+import { useChatStore } from '@renderer/stores/chatStore'
 
 type ChatStatus = 'ready' | 'submitted' | 'error'
-
-/**
- * 生成临时消息 ID（用于流式响应时的本地占位符）
- */
-function generateTempMessageId(): string {
-  return `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-}
 
 /**
  * 生成请求 ID
@@ -37,10 +30,9 @@ export const useAIChat = ({ config, defaultProviderId }: UseAIChatOptions) => {
     isSending,
     createSession,
     addMessage,
+    updateMessage,
     resetChat,
     loadSessions,
-    addLocalMessage,
-    updateLocalMessage,
     appendToLocalMessage,
     setIsSending
   } = useChatStore()
@@ -121,23 +113,25 @@ export const useAIChat = ({ config, defaultProviderId }: UseAIChatOptions) => {
       return
     }
 
-    // 创建助手消息占位符（先本地创建，流式完成后保存到数据库）
-    const tempAssistantId = generateTempMessageId()
-    const assistantPlaceholder: Message = {
-      id: tempAssistantId,
-      sessionId: sessionId,
+    // 提前创建空的助手消息并保存到数据库（状态为 pending）
+    const assistantMessage = await addMessage(sessionId, {
       role: 'assistant',
       content: '',
-      status: 'pending',
-      totalTokens: null,
-      createdAt: new Date().toISOString()
+      status: 'pending'
+    })
+
+    if (!assistantMessage) {
+      console.error('Failed to create assistant message')
+      setIsSending(false)
+      statusRef.current = 'error'
+      return
     }
 
-    addLocalMessage(assistantPlaceholder)
+    const assistantMessageId = assistantMessage.id
 
-    // 准备消息列表（用于 AI 请求）
+    // 准备消息列表（用于 AI 请求，排除刚创建的空助手消息）
     const messageList = messages
-      .filter((msg) => msg.id !== tempAssistantId) // 排除占位符
+      .filter((msg) => msg.id !== assistantMessageId)
       .map((msg) => ({
         role: msg.role,
         content: msg.content
@@ -164,7 +158,7 @@ export const useAIChat = ({ config, defaultProviderId }: UseAIChatOptions) => {
       (_event, data: { requestId: string; chunk: string }) => {
         if (data.requestId === requestId) {
           fullAssistantContent += data.chunk
-          appendToLocalMessage(tempAssistantId, data.chunk)
+          appendToLocalMessage(assistantMessageId, data.chunk)
         }
       }
     )
@@ -175,20 +169,11 @@ export const useAIChat = ({ config, defaultProviderId }: UseAIChatOptions) => {
       IPC_CHANNELS.ai.streamDone,
       async (_event, data: { requestId: string }) => {
         if (data.requestId === requestId) {
-          // 流式响应完成，保存助手消息到数据库
-          const savedMessage = await addMessage(sessionId!, {
-            role: 'assistant',
+          // 流式响应完成，更新数据库中的助手消息内容和状态
+          await updateMessage(assistantMessageId, {
             content: fullAssistantContent,
             status: 'sent'
           })
-
-          if (savedMessage) {
-            // 用数据库返回的消息替换本地占位符
-            updateLocalMessage(tempAssistantId, {
-              id: savedMessage.id,
-              status: 'sent'
-            })
-          }
 
           setIsSending(false)
           statusRef.current = 'ready'
@@ -212,20 +197,11 @@ export const useAIChat = ({ config, defaultProviderId }: UseAIChatOptions) => {
         if (data.requestId === requestId) {
           console.error('AI chat error:', data.msg)
 
-          // 更新本地消息状态为错误
-          updateLocalMessage(tempAssistantId, {
-            status: 'error',
-            content: fullAssistantContent || `Error: ${data.msg}`
+          // 更新数据库中的助手消息状态为错误
+          await updateMessage(assistantMessageId, {
+            content: fullAssistantContent || `Error: ${data.msg}`,
+            status: 'error'
           })
-
-          // 如果有部分内容，也保存到数据库
-          if (fullAssistantContent) {
-            await addMessage(sessionId!, {
-              role: 'assistant',
-              content: fullAssistantContent,
-              status: 'error'
-            })
-          }
 
           setIsSending(false)
           statusRef.current = 'error'

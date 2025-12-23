@@ -1,11 +1,7 @@
 import { useEffect } from 'react'
 import { useChatStore, type ChatSession } from '@renderer/stores/chatStore'
-import {
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton
-} from '@renderer/components/ui/sidebar'
-import { MessageSquare, Trash2, Plus } from 'lucide-react'
+import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@renderer/components/ui/sidebar'
+import { Trash2, Plus } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 
 interface ChatSessionListProps {
@@ -38,23 +34,6 @@ export const ChatSessionList: React.FC<ChatSessionListProps> = ({ onNewChat }) =
     await deleteSession(sessionId)
   }
 
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-
-    if (diffDays === 0) {
-      return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-    } else if (diffDays === 1) {
-      return '昨天'
-    } else if (diffDays < 7) {
-      return `${diffDays}天前`
-    } else {
-      return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
-    }
-  }
-
   return (
     <SidebarMenu>
       {/* 新建对话按钮 */}
@@ -85,30 +64,22 @@ export const ChatSessionList: React.FC<ChatSessionListProps> = ({ onNewChat }) =
             onClick={() => handleSelectSession(session)}
             isActive={session.id === currentSessionId}
             tooltip={session.title}
-            className={cn(
-              'group relative',
-              session.id === currentSessionId && 'bg-accent'
-            )}
+            className={cn('group relative', session.id === currentSessionId && 'bg-accent')}
           >
-            <MessageSquare className="h-4 w-4 shrink-0" />
             <div className="flex-1 min-w-0 flex flex-col items-start">
               <span className="truncate w-full text-left">{session.title}</span>
-              <span className="text-xs text-muted-foreground">
-                {formatDate(session.updatedAt)}
-              </span>
             </div>
             {/* 删除按钮 - 悬浮时显示 */}
-            <button
+            <div
               onClick={(e) => handleDeleteSession(e, session.id)}
               className="absolute right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded"
               title="删除对话"
             >
               <Trash2 className="h-3 w-3 text-destructive" />
-            </button>
+            </div>
           </SidebarMenuButton>
         </SidebarMenuItem>
       ))}
     </SidebarMenu>
   )
 }
-
