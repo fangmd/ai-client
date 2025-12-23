@@ -32,7 +32,7 @@ export const ChatInput: React.FC<Props> = ({ sendDisabled, onSend, resetChat }) 
   }
 
   return (
-    <InputGroup>
+    <InputGroup className='bg-background'>
       <InputGroupTextarea
         className="max-h-[300px]"
         placeholder="问一问"
@@ -70,7 +70,7 @@ export const ChatInput: React.FC<Props> = ({ sendDisabled, onSend, resetChat }) 
           <RefreshCcw />
           <span className="sr-only">reset</span>
         </InputGroupButton>
-        <Separator orientation="vertical" className="!h-4" />
+        <Separator orientation="vertical" className="h-4!" />
         <InputGroupButton
           variant="default"
           className="rounded-full"
