@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron'
 import { IPC_CHANNELS } from '../../common/constants'
-import type { IPCResponse } from '../../preload/types'
+import { responseSuccess, responseError } from '../../common/response'
 
 /**
  * Test Handler
@@ -15,18 +15,9 @@ export class TestHandler {
     ipcMain.on(IPC_CHANNELS.test.ping, (event) => {
       try {
         console.log('pong')
-        const response: IPCResponse<{ message: string }> = {
-          code: 0,
-          data: { message: 'pong' },
-          msg: 'success'
-        }
-        event.reply(IPC_CHANNELS.test.pong, response)
+        event.reply(IPC_CHANNELS.test.pong, responseSuccess({ message: 'pong' }))
       } catch (error) {
-        const response: IPCResponse = {
-          code: -1,
-          msg: error instanceof Error ? error.message : 'Unknown error'
-        }
-        event.reply(IPC_CHANNELS.test.pong, response)
+        event.reply(IPC_CHANNELS.test.pong, responseError(error))
       }
     })
   }

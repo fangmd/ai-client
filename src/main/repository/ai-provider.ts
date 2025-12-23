@@ -1,16 +1,6 @@
 import { prisma } from '@/main/common/db/prisma'
-import type { Prisma } from '@prisma/client'
 import { generateUUID } from '@/common/snowflake'
-
-/**
- * AI Provider 创建数据
- */
-export type CreateAiProviderData = Prisma.AiProviderCreateInput
-
-/**
- * AI Provider 更新数据
- */
-export type UpdateAiProviderData = Prisma.AiProviderUpdateInput
+import type { CreateAiProviderData, UpdateAiProviderData } from '@/types'
 
 /**
  * 创建 AI Provider

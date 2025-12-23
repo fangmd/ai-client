@@ -1,17 +1,16 @@
 import { ipcMain } from 'electron'
-import { IPC_CHANNELS, SUCCESS_CODE, ERROR_CODE } from '../../common/constants'
-import type { IPCResponse } from '../../preload/types'
+import { IPC_CHANNELS } from '@/common/constants'
+import { responseSuccess, responseError } from '@/common/response'
+import type { CreateChatSessionData, UpdateChatSessionData } from '@/types'
 import {
   createChatSession,
   listChatSessions,
   getChatSessionById,
   updateChatSession,
-  deleteChatSession,
-  type CreateChatSessionData,
-  type UpdateChatSessionData
-} from '../repository/chat-session'
-import { getAiProviderById } from '../repository/ai-provider'
-import { logError, logInfo } from '../utils'
+  deleteChatSession
+} from '@/main/repository/chat-session'
+import { getAiProviderById } from '@/main/repository/ai-provider'
+import { logError, logInfo } from '@/main/utils'
 
 /**
  * ChatSession Handler
@@ -31,11 +30,7 @@ export class ChatSessionHandler {
           const aiProviderId = BigInt(data.aiProviderId)
           const provider = await getAiProviderById(aiProviderId)
           if (!provider) {
-            const response: IPCResponse = {
-              code: ERROR_CODE,
-              msg: 'AI Provider not found'
-            }
-            return response
+            return responseError('AI Provider not found')
           }
 
           const sessionData: CreateChatSessionData = {
@@ -44,20 +39,11 @@ export class ChatSessionHandler {
           }
 
           const session = await createChatSession(sessionData)
-          const response: IPCResponse = {
-            code: SUCCESS_CODE,
-            data: serializeChatSession(session),
-            msg: 'success'
-          }
           logInfo('【IPC Handler】chatSession:create success')
-          return response
+          return responseSuccess(serializeChatSession(session))
         } catch (error) {
-          const response: IPCResponse = {
-            code: ERROR_CODE,
-            msg: error instanceof Error ? error.message : 'Unknown error'
-          }
           logError('【IPC Handler】chatSession:create error:', error)
-          return response
+          return responseError(error)
         }
       }
     )
@@ -68,19 +54,10 @@ export class ChatSessionHandler {
       async (_event, options?: { limit?: number; offset?: number }) => {
         try {
           const sessions = await listChatSessions(options)
-          const response: IPCResponse = {
-            code: SUCCESS_CODE,
-            data: sessions.map(serializeChatSession),
-            msg: 'success'
-          }
-          return response
+          return responseSuccess(sessions.map(serializeChatSession))
         } catch (error) {
-          const response: IPCResponse = {
-            code: ERROR_CODE,
-            msg: error instanceof Error ? error.message : 'Unknown error'
-          }
           logError('【IPC Handler】chatSession:list error:', error)
-          return response
+          return responseError(error)
         }
       }
     )
@@ -92,29 +69,16 @@ export class ChatSessionHandler {
         const session = await getChatSessionById(id)
 
         if (!session) {
-          const response: IPCResponse = {
-            code: ERROR_CODE,
-            msg: 'Chat session not found'
-          }
-          return response
+          return responseError('Chat session not found')
         }
 
-        const response: IPCResponse = {
-          code: SUCCESS_CODE,
-          data: {
-            ...serializeChatSession(session),
-            messages: session.messages.map(serializeMessage)
-          },
-          msg: 'success'
-        }
-        return response
+        return responseSuccess({
+          ...serializeChatSession(session),
+          messages: session.messages.map(serializeMessage)
+        })
       } catch (error) {
-        const response: IPCResponse = {
-          code: ERROR_CODE,
-          msg: error instanceof Error ? error.message : 'Unknown error'
-        }
         logError('【IPC Handler】chatSession:get error:', error)
-        return response
+        return responseError(error)
       }
     })
 
@@ -125,20 +89,11 @@ export class ChatSessionHandler {
         try {
           const id = BigInt(data.id)
           const session = await updateChatSession(id, data.data)
-          const response: IPCResponse = {
-            code: SUCCESS_CODE,
-            data: serializeChatSession(session),
-            msg: 'success'
-          }
           logInfo('【IPC Handler】chatSession:update success')
-          return response
+          return responseSuccess(serializeChatSession(session))
         } catch (error) {
-          const response: IPCResponse = {
-            code: ERROR_CODE,
-            msg: error instanceof Error ? error.message : 'Unknown error'
-          }
           logError('【IPC Handler】chatSession:update error:', error)
-          return response
+          return responseError(error)
         }
       }
     )
@@ -148,19 +103,11 @@ export class ChatSessionHandler {
       try {
         const id = BigInt(data.id)
         await deleteChatSession(id)
-        const response: IPCResponse = {
-          code: SUCCESS_CODE,
-          msg: 'success'
-        }
         logInfo('【IPC Handler】chatSession:delete success')
-        return response
+        return responseSuccess()
       } catch (error) {
-        const response: IPCResponse = {
-          code: ERROR_CODE,
-          msg: error instanceof Error ? error.message : 'Unknown error'
-        }
         logError('【IPC Handler】chatSession:delete error:', error)
-        return response
+        return responseError(error)
       }
     })
   }
@@ -218,4 +165,3 @@ function serializeMessage(message: {
     createdAt: message.createdAt.toISOString()
   }
 }
-

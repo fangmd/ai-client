@@ -1,53 +1,11 @@
 import { prisma } from '@/main/common/db/prisma'
 import { generateUUID } from '@/common/snowflake'
-
-/**
- * 消息角色类型
- */
-export type MessageRole = 'user' | 'assistant' | 'system'
-
-/**
- * 消息状态类型
- */
-export type MessageStatus = 'sent' | 'pending' | 'error'
-
-/**
- * Message 类型
- */
-export type Message = {
-  id: bigint
-  sessionId: bigint
-  role: string
-  content: string
-  status: string | null
-  totalTokens: number | null
-  createdAt: Date
-}
-
-/**
- * Message 创建数据
- */
-export type CreateMessageData = {
-  sessionId: bigint
-  role: MessageRole
-  content: string
-  status?: MessageStatus
-  totalTokens?: number
-}
-
-/**
- * Message 更新数据
- */
-export type UpdateMessageData = {
-  content?: string
-  status?: MessageStatus
-  totalTokens?: number
-}
+import type { DbMessage, CreateMessageData, UpdateMessageData } from '@/types'
 
 /**
  * 创建消息
  */
-export async function createMessage(data: CreateMessageData): Promise<Message> {
+export async function createMessage(data: CreateMessageData): Promise<DbMessage> {
   // 创建消息
   const message = await prisma.message.create({
     data: {
@@ -86,7 +44,7 @@ export async function createMessage(data: CreateMessageData): Promise<Message> {
 /**
  * 更新消息
  */
-export async function updateMessage(id: bigint, data: UpdateMessageData): Promise<Message> {
+export async function updateMessage(id: bigint, data: UpdateMessageData): Promise<DbMessage> {
   return prisma.message.update({
     where: { id },
     data: {
@@ -100,7 +58,7 @@ export async function updateMessage(id: bigint, data: UpdateMessageData): Promis
 /**
  * 追加消息内容（用于流式响应）
  */
-export async function appendMessageContent(id: bigint, content: string): Promise<Message> {
+export async function appendMessageContent(id: bigint, content: string): Promise<DbMessage> {
   const message = await prisma.message.findUnique({
     where: { id }
   })
@@ -120,7 +78,7 @@ export async function appendMessageContent(id: bigint, content: string): Promise
 /**
  * 查询会话的所有消息
  */
-export async function listMessages(sessionId: bigint): Promise<Message[]> {
+export async function listMessages(sessionId: bigint): Promise<DbMessage[]> {
   return prisma.message.findMany({
     where: { sessionId },
     orderBy: {
@@ -175,7 +133,7 @@ function generateTitleFromContent(content: string): string {
 /**
  * 根据 ID 查询消息
  */
-export async function getMessageById(id: bigint): Promise<Message | null> {
+export async function getMessageById(id: bigint): Promise<DbMessage | null> {
   return prisma.message.findUnique({
     where: { id }
   })

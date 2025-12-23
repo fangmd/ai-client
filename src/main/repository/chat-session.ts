@@ -1,37 +1,12 @@
 import { prisma } from '@/main/common/db/prisma'
 import { generateUUID } from '@/common/snowflake'
 import { listMessages } from './message'
-
-/**
- * ChatSession 类型
- */
-export type ChatSession = {
-  id: bigint
-  title: string
-  aiProviderId: bigint
-  createdAt: Date
-  updatedAt: Date
-}
-
-/**
- * ChatSession 创建数据
- */
-export type CreateChatSessionData = {
-  title?: string
-  aiProviderId: bigint
-}
-
-/**
- * ChatSession 更新数据
- */
-export type UpdateChatSessionData = {
-  title?: string
-}
+import type { DbChatSession, CreateChatSessionData, UpdateChatSessionData } from '@/types'
 
 /**
  * 创建对话会话
  */
-export async function createChatSession(data: CreateChatSessionData): Promise<ChatSession> {
+export async function createChatSession(data: CreateChatSessionData): Promise<DbChatSession> {
   return prisma.chatSession.create({
     data: {
       id: generateUUID().valueOf(),
@@ -47,7 +22,7 @@ export async function createChatSession(data: CreateChatSessionData): Promise<Ch
 export async function listChatSessions(options?: {
   limit?: number
   offset?: number
-}): Promise<ChatSession[]> {
+}): Promise<DbChatSession[]> {
   return prisma.chatSession.findMany({
     take: options?.limit ?? 100,
     skip: options?.offset ?? 0,
@@ -85,7 +60,7 @@ export async function getChatSessionById(id: bigint) {
 export async function updateChatSession(
   id: bigint,
   data: UpdateChatSessionData
-): Promise<ChatSession> {
+): Promise<DbChatSession> {
   return prisma.chatSession.update({
     where: { id },
     data: {

@@ -1,8 +1,8 @@
 import { ipcMain } from 'electron'
 import { IPC_CHANNELS } from '../../common/constants'
-import type { IPCResponse } from '../../preload/types'
+import { responseSuccess, responseError } from '../../common/response'
 import { AIProviderFactory } from '../providers'
-import type { Message, AIConfig } from '@/types/chat'
+import type { Message, AIConfig } from '@/types'
 
 /**
  * 存储活跃的请求，用于取消功能
@@ -36,13 +36,9 @@ export class AIHandler {
 
         // 验证配置
         if (!provider.validateConfig(config)) {
-          const response: IPCResponse = {
-            code: -1,
-            msg: 'Invalid AI configuration'
-          }
           event.reply(IPC_CHANNELS.ai.streamError, {
             requestId,
-            ...response
+            ...responseError('Invalid AI configuration')
           })
           activeRequests.delete(requestId)
           return
@@ -69,13 +65,9 @@ export class AIHandler {
             },
             onError: (error: Error) => {
               // 发送错误事件
-              const response: IPCResponse = {
-                code: -1,
-                msg: error.message
-              }
               event.sender.send(IPC_CHANNELS.ai.streamError, {
                 requestId,
-                ...response
+                ...responseError(error)
               })
               activeRequests.delete(requestId)
             }
@@ -83,13 +75,9 @@ export class AIHandler {
           abortController.signal
         )
       } catch (error) {
-        const response: IPCResponse = {
-          code: -1,
-          msg: error instanceof Error ? error.message : 'Unknown error'
-        }
         event.sender.send(IPC_CHANNELS.ai.streamError, {
           requestId,
-          ...response
+          ...responseError(error)
         })
         activeRequests.delete(requestId)
       }
@@ -103,18 +91,9 @@ export class AIHandler {
       if (abortController) {
         abortController.abort()
         activeRequests.delete(requestId)
-
-        const response: IPCResponse<void> = {
-          code: 0,
-          msg: 'Request cancelled'
-        }
-        event.reply(IPC_CHANNELS.ai.cancelChat, response)
+        event.reply(IPC_CHANNELS.ai.cancelChat, responseSuccess(undefined, 'Request cancelled'))
       } else {
-        const response: IPCResponse<void> = {
-          code: -1,
-          msg: 'Request not found'
-        }
-        event.reply(IPC_CHANNELS.ai.cancelChat, response)
+        event.reply(IPC_CHANNELS.ai.cancelChat, responseError('Request not found'))
       }
     })
   }

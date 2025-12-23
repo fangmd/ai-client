@@ -24,15 +24,20 @@ alwaysApply: true
 - 统一使用 `IPCResponse<T>` 接口
 - 格式：`{ code: number, data?: T, msg: string }`
 - `code: 0` 表示成功，`code: -1` 表示失败
-- 位置：`src/preload/types.ts`
+- 类型定义位置：`src/preload/types.ts`
+- **必须使用工具函数构建响应**：
+  - `responseSuccess<T>(data?, msg?)` - 创建成功响应
+  - `responseError(error, code?)` - 创建错误响应
+  - 工具函数位置：`src/common/response.ts`
 
 ### 3. Handler 实现
 - 文件命名：`xxx-handler.ts` (kebab-case)
 - 使用静态类方法：`static register()` 和 `static unregister()`
 - 必须使用 try-catch 包裹，返回标准 `IPCResponse` 格式
 - 必须从 `IPC_CHANNELS` 导入通道常量
-- 成功响应：`{ code: 0, data: result, msg: 'success' }`
-- 错误响应：`{ code: -1, msg: error.message }`
+- **必须使用工具函数构建响应**：
+  - 成功响应：`return responseSuccess(data)` 或 `return responseSuccess(data, 'custom message')`
+  - 错误响应：`return responseError(error)` 或 `return responseError('error message', customCode)`
 - **优先使用 `ipcMain.handle` 直接返回结果**：如果函数能直接返回结果，使用 `ipcMain.handle` 并直接 `return`，不要使用 `event.reply`
 - **流式/事件式通信才使用 `ipcMain.on`**：只有在需要流式传输、多次事件推送或需要主动推送消息时，才使用 `ipcMain.on` + `event.reply`
 
@@ -62,7 +67,7 @@ alwaysApply: true
 ```typescript
 import { ipcMain } from 'electron'
 import { IPC_CHANNELS } from '../../common/constants'
-import type { IPCResponse } from '../../preload/types'
+import { responseSuccess, responseError } from '../../common/response'
 
 export class XxxHandler {
   static register(): void {
@@ -70,18 +75,9 @@ export class XxxHandler {
     ipcMain.handle(IPC_CHANNELS.xxx.action, async (_event, data: RequestData) => {
       try {
         const result = await someAsyncOperation(data)
-        const response: IPCResponse<DataType> = {
-          code: 0,
-          data: result,
-          msg: 'success'
-        }
-        return response
+        return responseSuccess(result)
       } catch (error) {
-        const response: IPCResponse = {
-          code: -1,
-          msg: error instanceof Error ? error.message : 'Unknown error'
-        }
-        return response
+        return responseError(error)
       }
     })
   }
@@ -122,7 +118,7 @@ if (response.code === SUCCESS_CODE) {
 ```typescript
 import { ipcMain } from 'electron'
 import { IPC_CHANNELS } from '../../common/constants'
-import type { IPCResponse } from '../../preload/types'
+import { responseSuccess, responseError } from '../../common/response'
 
 export class StreamHandler {
   static register(): void {
@@ -135,17 +131,24 @@ export class StreamHandler {
         }
         event.sender.send(IPC_CHANNELS.xxx.streamDone, {})
       } catch (error) {
-        const response: IPCResponse = {
-          code: -1,
-          msg: error instanceof Error ? error.message : 'Unknown error'
-        }
-        event.sender.send(IPC_CHANNELS.xxx.streamError, response)
+        event.sender.send(IPC_CHANNELS.xxx.streamError, responseError(error))
+      }
+    })
+
+    // 需要回复成功/失败的事件式通信
+    ipcMain.on(IPC_CHANNELS.xxx.action, (event, data) => {
+      try {
+        // 处理逻辑
+        event.reply(IPC_CHANNELS.xxx.actionReply, responseSuccess(result))
+      } catch (error) {
+        event.reply(IPC_CHANNELS.xxx.actionReply, responseError(error))
       }
     })
   }
 
   static unregister(): void {
     ipcMain.removeAllListeners(IPC_CHANNELS.xxx.streamStart)
+    ipcMain.removeAllListeners(IPC_CHANNELS.xxx.action)
   }
 }
 ```
@@ -215,6 +218,7 @@ const unsubscribeDone = window.electron.ipcRenderer.on(
 - ❌ 禁止直接使用 `window.electron.ipcRenderer.send('test:ping')`
 - ❌ 禁止在 Handler 中不使用 try-catch
 - ❌ 禁止返回非标准响应格式
+- ❌ **禁止手动构建 `IPCResponse` 对象**：必须使用 `responseSuccess()` 和 `responseError()` 工具函数
 - ❌ 禁止使用 camelCase 或 snake_case 命名文件
 - ❌ 禁止使用 `window.api.*` 相关 API，应直接使用 `window.electron.ipcRenderer` 进行 IPC 通信，并通过导入 `IPC_CHANNELS` 获取通道名称
 - ❌ **禁止在能直接返回结果时使用 `ipcMain.on` + `event.reply`**：如果函数能直接返回结果，必须使用 `ipcMain.handle` 并直接 `return`，不要使用监听方式

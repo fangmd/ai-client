@@ -1,12 +1,12 @@
 import { ipcMain } from 'electron'
 import { IPC_CHANNELS } from '../../common/constants'
-import type { IPCResponse } from '../../preload/types'
+import { responseSuccess, responseError } from '../../common/response'
+import type { CreateAiProviderData } from '@/types'
 import {
   createAiProvider,
   getDefaultAiProvider,
   setDefaultAiProvider
 } from '../repository/ai-provider'
-import type { CreateAiProviderData } from '../repository/ai-provider'
 import { logError, logInfo } from '../utils'
 
 /**
@@ -28,18 +28,9 @@ export class AIProviderHandler {
           await setDefaultAiProvider(provider.id)
         }
 
-        const response: IPCResponse = {
-          code: 0,
-          data: provider,
-          msg: 'success'
-        }
-        return response
+        return responseSuccess(provider)
       } catch (error) {
-        const response: IPCResponse = {
-          code: -1,
-          msg: error instanceof Error ? error.message : 'Unknown error'
-        }
-        return response
+        return responseError(error)
       }
     })
 
@@ -47,18 +38,11 @@ export class AIProviderHandler {
     ipcMain.handle(IPC_CHANNELS.aiProvider.getDefault, async () => {
       try {
         const provider = await getDefaultAiProvider()
-        const response: IPCResponse = {
-          code: 0,
-          data: provider,
-          msg: 'success'
-        }
+        const response = responseSuccess(provider)
         logInfo('【IPC Handler】aiProvider:getDefault success, response:', response)
         return response
       } catch (error) {
-        const response: IPCResponse = {
-          code: -1,
-          msg: error instanceof Error ? error.message : 'Unknown error'
-        }
+        const response = responseError(error)
         logError('【IPC Handler】aiProvider:getDefault error, response:', response)
         return response
       }

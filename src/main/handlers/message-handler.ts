@@ -1,15 +1,12 @@
 import { ipcMain } from 'electron'
-import { IPC_CHANNELS, SUCCESS_CODE, ERROR_CODE } from '../../common/constants'
-import type { IPCResponse } from '../../preload/types'
+import { IPC_CHANNELS } from '../../common/constants'
+import { responseSuccess, responseError } from '../../common/response'
+import type { CreateMessageData, UpdateMessageData, MessageRole, DbMessageStatus } from '@/types'
 import {
   createMessage,
   updateMessage,
   appendMessageContent,
-  listMessages,
-  type CreateMessageData,
-  type UpdateMessageData,
-  type MessageRole,
-  type MessageStatus
+  listMessages
 } from '../repository/message'
 import { chatSessionExists } from '../repository/chat-session'
 import { logError, logInfo } from '../utils'
@@ -32,7 +29,7 @@ export class MessageHandler {
           sessionId: string
           role: MessageRole
           content: string
-          status?: MessageStatus
+          status?: DbMessageStatus
           totalTokens?: number
         }
       ) => {
@@ -41,11 +38,7 @@ export class MessageHandler {
           const sessionId = BigInt(data.sessionId)
           const exists = await chatSessionExists(sessionId)
           if (!exists) {
-            const response: IPCResponse = {
-              code: ERROR_CODE,
-              msg: 'Chat session not found'
-            }
-            return response
+            return responseError('Chat session not found')
           }
 
           const messageData: CreateMessageData = {
@@ -57,20 +50,11 @@ export class MessageHandler {
           }
 
           const message = await createMessage(messageData)
-          const response: IPCResponse = {
-            code: SUCCESS_CODE,
-            data: serializeMessage(message),
-            msg: 'success'
-          }
           logInfo('【IPC Handler】message:create success')
-          return response
+          return responseSuccess(serializeMessage(message))
         } catch (error) {
-          const response: IPCResponse = {
-            code: ERROR_CODE,
-            msg: error instanceof Error ? error.message : 'Unknown error'
-          }
           logError('【IPC Handler】message:create error:', error)
-          return response
+          return responseError(error)
         }
       }
     )
@@ -82,19 +66,10 @@ export class MessageHandler {
         try {
           const id = BigInt(data.id)
           const message = await updateMessage(id, data.data)
-          const response: IPCResponse = {
-            code: SUCCESS_CODE,
-            data: serializeMessage(message),
-            msg: 'success'
-          }
-          return response
+          return responseSuccess(serializeMessage(message))
         } catch (error) {
-          const response: IPCResponse = {
-            code: ERROR_CODE,
-            msg: error instanceof Error ? error.message : 'Unknown error'
-          }
           logError('【IPC Handler】message:update error:', error)
-          return response
+          return responseError(error)
         }
       }
     )
@@ -106,19 +81,10 @@ export class MessageHandler {
         try {
           const id = BigInt(data.id)
           const message = await appendMessageContent(id, data.content)
-          const response: IPCResponse = {
-            code: SUCCESS_CODE,
-            data: serializeMessage(message),
-            msg: 'success'
-          }
-          return response
+          return responseSuccess(serializeMessage(message))
         } catch (error) {
-          const response: IPCResponse = {
-            code: ERROR_CODE,
-            msg: error instanceof Error ? error.message : 'Unknown error'
-          }
           logError('【IPC Handler】message:append error:', error)
-          return response
+          return responseError(error)
         }
       }
     )
@@ -128,19 +94,10 @@ export class MessageHandler {
       try {
         const sessionId = BigInt(data.sessionId)
         const messages = await listMessages(sessionId)
-        const response: IPCResponse = {
-          code: SUCCESS_CODE,
-          data: messages.map(serializeMessage),
-          msg: 'success'
-        }
-        return response
+        return responseSuccess(messages.map(serializeMessage))
       } catch (error) {
-        const response: IPCResponse = {
-          code: ERROR_CODE,
-          msg: error instanceof Error ? error.message : 'Unknown error'
-        }
         logError('【IPC Handler】message:list error:', error)
-        return response
+        return responseError(error)
       }
     })
   }
@@ -178,4 +135,3 @@ function serializeMessage(message: {
     createdAt: message.createdAt.toISOString()
   }
 }
-
