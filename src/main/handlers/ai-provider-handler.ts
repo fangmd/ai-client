@@ -80,12 +80,8 @@ export class AIProviderHandler {
     // 更新 AI Provider
     ipcMain.handle(
       IPC_CHANNELS.aiProvider.update,
-      async (_event, id: bigint, data: UpdateAiProviderData) => {
-        logInfo('【IPC Handler】aiProvider:update called, id:', id, 'data:', {
-          name: data.name,
-          provider: data.provider,
-          model: data.model
-        })
+      async (_event, { id, data }: { id: bigint; data: UpdateAiProviderData }) => {
+        logInfo('【IPC Handler】aiProvider:update called, id:', id, 'data:', data)
         try {
           const provider = await updateAiProvider(id, data)
 

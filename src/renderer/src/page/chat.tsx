@@ -1,26 +1,78 @@
 import { useAIChat } from '@renderer/hooks/use-ai-chat'
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { MessageItem } from '@renderer/chat/message-item'
 import '@renderer/assets/chat.css'
 import { ChatInput } from '@renderer/chat/chat-input'
 import { LoadingAnimation } from '@renderer/components/loading'
 import type { AIConfig } from '@/types/chat-type'
+import type { AiProvider } from '@/types/ai-provider-type'
+import type { IPCResponse } from '@/types'
 import { useChatStore } from '@renderer/stores/chatStore'
 import { logDebug } from '@renderer/utils'
+import { IPC_CHANNELS, SUCCESS_CODE } from '@/common/constants/ipc'
 
 interface ChatProps {
-  aiConfig: AIConfig
-  loadingProvider: boolean
-  hasConfig: boolean
-  defaultProviderId: bigint | null
+  refreshKey?: number // 用于外部触发刷新 provider
 }
 
-export const Chat: React.FC<ChatProps> = ({
-  aiConfig,
-  loadingProvider,
-  hasConfig,
-  defaultProviderId
-}) => {
+// 默认配置
+const defaultConfig: AIConfig = {
+  provider: 'openai' as const,
+  apiKey: '',
+  model: 'gpt-3.5-turbo',
+  temperature: 0.7,
+  maxTokens: 2000
+}
+
+// 从 Provider 构建 AIConfig
+const buildAIConfig = (provider: AiProvider | null): AIConfig => {
+  if (!provider) return defaultConfig
+  return {
+    provider: provider.provider as 'openai' | 'anthropic' | 'custom',
+    apiKey: provider.apiKey,
+    baseURL: provider.baseURL || undefined,
+    model: provider.model,
+    temperature: provider.temperature || undefined,
+    maxTokens: provider.maxTokens || undefined,
+    openai: provider.organization ? { organization: provider.organization } : undefined
+  }
+}
+
+export const Chat: React.FC<ChatProps> = ({ refreshKey }) => {
+  const { config, setCurrentAiProviderId } = useChatStore()
+  const [defaultProvider, setDefaultProvider] = useState<AiProvider | null>(null)
+  const [loadingProvider, setLoadingProvider] = useState(true)
+
+  // 加载默认 AI Provider
+  const loadDefaultProvider = useCallback(async () => {
+    try {
+      setLoadingProvider(true)
+      const response = (await window.electron.ipcRenderer.invoke(
+        IPC_CHANNELS.aiProvider.getDefault
+      )) as IPCResponse<AiProvider | null>
+
+      if (response.code === SUCCESS_CODE && response.data) {
+        const provider = response.data
+        setDefaultProvider(provider)
+        setCurrentAiProviderId(provider.id)
+      }
+    } catch (error) {
+      console.error('Failed to load default provider:', error)
+    } finally {
+      setLoadingProvider(false)
+    }
+  }, [setCurrentAiProviderId])
+
+  // 初始化时和 refreshKey 变化时加载 provider
+  useEffect(() => {
+    loadDefaultProvider()
+  }, [refreshKey, loadDefaultProvider])
+
+  // 计算 aiConfig 和 hasConfig
+  const aiConfig = defaultProvider ? buildAIConfig(defaultProvider) : config || defaultConfig
+  const hasConfig = !!(defaultProvider || config)
+  const defaultProviderId = defaultProvider?.id ?? null
+
   const { messages, sendMessage, isSending, resetChat } = useAIChat({
     config: aiConfig,
     defaultProviderId

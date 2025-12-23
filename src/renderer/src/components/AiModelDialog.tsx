@@ -20,13 +20,12 @@ import {
   SelectValue
 } from '@renderer/components/ui/select'
 import type { CreateAiProviderData, AiProvider, UpdateAiProviderData } from '@/types/ai-provider-type'
-import type { IPCResponse } from '@/types'
-import { IPC_CHANNELS, SUCCESS_CODE } from '@/common/constants/ipc'
+import { useAiProviderStore } from '@renderer/stores/ai-provider-store'
+import { logDebug } from '@renderer/utils'
 
 interface AiModelDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSuccess?: () => void
   editProvider?: AiProvider // 编辑模式：传入要编辑的 Provider
 }
 
@@ -46,9 +45,9 @@ const defaultFormData: CreateAiProviderData = {
 export const AiModelDialog: React.FC<AiModelDialogProps> = ({
   open,
   onOpenChange,
-  onSuccess,
   editProvider
 }) => {
+  const { createProvider, updateProvider, loadProviders } = useAiProviderStore()
   const isEditMode = !!editProvider
   const [formData, setFormData] = useState<CreateAiProviderData>(defaultFormData)
   const [loading, setLoading] = useState(false)
@@ -103,31 +102,26 @@ export const AiModelDialog: React.FC<AiModelDialogProps> = ({
           updateData.apiKey = formData.apiKey
         }
 
-        const response = (await window.electron.ipcRenderer.invoke(
-          IPC_CHANNELS.aiProvider.update,
-          BigInt(editProvider.id.toString()),
-          updateData
-        )) as IPCResponse<AiProvider>
+        logDebug('updateData', updateData)
 
-        if (response.code === SUCCESS_CODE) {
+        const result = await updateProvider(editProvider.id, updateData)
+        if (result) {
+          // 如果 isDefault 变化，需要重新加载列表
+          if (formData.isDefault !== editProvider.isDefault) {
+            await loadProviders()
+          }
           onOpenChange(false)
-          onSuccess?.()
         } else {
-          alert(`更新失败: ${response.msg}`)
+          alert('更新失败')
         }
       } else {
         // 添加模式
-        const response = (await window.electron.ipcRenderer.invoke(
-          IPC_CHANNELS.aiProvider.create,
-          formData
-        )) as IPCResponse<AiProvider>
-
-        if (response.code === SUCCESS_CODE) {
+        const result = await createProvider(formData)
+        if (result) {
           onOpenChange(false)
           setFormData(defaultFormData)
-          onSuccess?.()
         } else {
-          alert(`创建失败: ${response.msg}`)
+          alert('创建失败')
         }
       }
     } catch (error) {

@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState } from 'react'
 import { Button } from '@renderer/components/ui/button'
 import { AiModelDialog } from './AiModelDialog'
 import { EmptyState } from './EmptyState'
 import type { AiProvider } from '@/types/ai-provider-type'
-import type { IPCResponse } from '@/types'
-import { IPC_CHANNELS, SUCCESS_CODE } from '@/common/constants/ipc'
 import { Plus, Trash2, Star, Bot, Pencil } from 'lucide-react'
+import { useAiProviderStore } from '@renderer/stores/ai-provider-store'
 
 // 提供商名称映射
 const providerLabels: Record<string, string> = {
@@ -15,67 +14,25 @@ const providerLabels: Record<string, string> = {
 }
 
 export const AiModelList: React.FC = () => {
-  const [providers, setProviders] = useState<AiProvider[]>([])
-  const [loading, setLoading] = useState(true)
+  const { providers, loading, deleteProvider, setDefault } = useAiProviderStore()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingProvider, setEditingProvider] = useState<AiProvider | undefined>(undefined)
 
-  // 加载所有模型
-  const loadProviders = useCallback(async () => {
-    try {
-      const response = (await window.electron.ipcRenderer.invoke(
-        IPC_CHANNELS.aiProvider.list
-      )) as IPCResponse<AiProvider[]>
-
-      if (response.code === SUCCESS_CODE && response.data) {
-        setProviders(response.data)
-      }
-    } catch (error) {
-      console.error('Failed to load providers:', error)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    loadProviders()
-  }, [loadProviders])
-
   // 删除模型
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: bigint) => {
     if (!confirm('确定要删除此模型吗？')) return
 
-    try {
-      const response = (await window.electron.ipcRenderer.invoke(
-        IPC_CHANNELS.aiProvider.delete,
-        BigInt(id)
-      )) as IPCResponse<null>
-
-      if (response.code === SUCCESS_CODE) {
-        loadProviders()
-      } else {
-        alert(`删除失败: ${response.msg}`)
-      }
-    } catch (error) {
-      alert(`删除失败: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    const success = await deleteProvider(id)
+    if (!success) {
+      alert('删除失败')
     }
   }
 
   // 设为默认
-  const handleSetDefault = async (id: string) => {
-    try {
-      const response = (await window.electron.ipcRenderer.invoke(
-        IPC_CHANNELS.aiProvider.setDefault,
-        BigInt(id)
-      )) as IPCResponse<AiProvider>
-
-      if (response.code === SUCCESS_CODE) {
-        loadProviders()
-      } else {
-        alert(`设置失败: ${response.msg}`)
-      }
-    } catch (error) {
-      alert(`设置失败: ${error instanceof Error ? error.message : 'Unknown error'}`)
+  const handleSetDefault = async (id: bigint) => {
+    const success = await setDefault(id)
+    if (!success) {
+      alert('设置失败')
     }
   }
 
@@ -126,7 +83,7 @@ export const AiModelList: React.FC = () => {
           <div className="divide-y">
             {providers.map((provider) => (
               <div
-                key={provider.id}
+                key={provider.id.toString()}
                 className="p-4 flex items-center justify-between hover:bg-muted/50 transition-colors"
               >
                 <div className="flex-1 min-w-0">
@@ -159,7 +116,7 @@ export const AiModelList: React.FC = () => {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleSetDefault(provider.id.toString())}
+                      onClick={() => handleSetDefault(provider.id)}
                     >
                       设为默认
                     </Button>
@@ -175,7 +132,7 @@ export const AiModelList: React.FC = () => {
                     variant="ghost"
                     size="icon-sm"
                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                    onClick={() => handleDelete(provider.id.toString())}
+                    onClick={() => handleDelete(provider.id)}
                   >
                     <Trash2 className="size-4" />
                   </Button>
@@ -189,7 +146,6 @@ export const AiModelList: React.FC = () => {
       <AiModelDialog
         open={dialogOpen}
         onOpenChange={handleDialogOpenChange}
-        onSuccess={loadProviders}
         editProvider={editingProvider}
       />
     </section>
