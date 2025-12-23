@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { IPCResponse, ThemeMode, ConfigItem } from '@/types'
 import { IPC_CHANNELS, SUCCESS_CODE } from '@/common/constants/ipc'
 import { CONFIG_KEYS, DEFAULT_CONFIG } from '@/types/config-type'
+import { applyTheme, setupSystemThemeListener } from '@renderer/utils'
 
 interface ConfigState {
   // 配置数据
@@ -10,40 +11,6 @@ interface ConfigState {
   // Actions
   loadConfig: () => Promise<void>
   setTheme: (mode: ThemeMode) => Promise<void>
-}
-
-/**
- * 应用主题到 DOM
- */
-const applyTheme = (theme: ThemeMode): void => {
-  const root = window.document.documentElement
-  root.classList.remove('light', 'dark')
-
-  if (theme === 'system') {
-    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-    root.classList.add(systemTheme)
-  } else {
-    root.classList.add(theme)
-  }
-}
-
-// 监听系统主题变化
-let mediaQueryListener: ((e: MediaQueryListEvent) => void) | null = null
-
-const setupSystemThemeListener = (theme: ThemeMode): void => {
-  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-
-  // 移除旧的监听器
-  if (mediaQueryListener) {
-    mediaQuery.removeEventListener('change', mediaQueryListener)
-    mediaQueryListener = null
-  }
-
-  // 如果是跟随系统，添加监听器
-  if (theme === 'system') {
-    mediaQueryListener = () => applyTheme('system')
-    mediaQuery.addEventListener('change', mediaQueryListener)
-  }
 }
 
 export const useConfigStore = create<ConfigState>((set) => ({
