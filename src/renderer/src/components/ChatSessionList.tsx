@@ -76,13 +76,13 @@ export const ChatSessionList: React.FC<ChatSessionListProps> = ({ onNewChat }) =
               <span className="truncate w-full text-left">{session.title}</span>
             </div>
             {/* 删除按钮 - 悬浮时显示 */}
-            <button
+            <div
               onClick={(e) => handleDeleteSession(e, session.id)}
               className="absolute right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded"
               title="删除对话"
             >
               <Trash2 className="h-3 w-3 text-destructive" />
-            </button>
+            </div>
           </SidebarMenuButton>
         </SidebarMenuItem>
       ))}
