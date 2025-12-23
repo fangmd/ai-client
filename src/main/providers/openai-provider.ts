@@ -98,6 +98,10 @@ export class OpenAIProvider implements AIProvider {
           return
         }
 
+        logDebug('OpenAI stream chat chunk received', {
+          chunk: chunk
+        })
+
         const content = chunk.choices[0]?.delta?.content
         if (content) {
           chunkCount++
@@ -117,8 +121,7 @@ export class OpenAIProvider implements AIProvider {
         return
       }
 
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error occurred'
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
       logError('OpenAI API error occurred', {
         model: config.model,
         error: errorMessage,

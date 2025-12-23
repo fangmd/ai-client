@@ -2,7 +2,8 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider     = "prisma-client-js"
+  relationMode = "prisma"
 }
 
 datasource db {
@@ -10,18 +11,18 @@ datasource db {
 }
 
 model AiProvider {
-  id          BigInt   @id
-  name        String?  // 提供商名称（可选，用于标识）
-  provider    String   // 提供商类型: openai, anthropic, custom
-  apiKey      String   // API 密钥
-  baseURL     String?  // 基础 URL（可选）
-  model       String   // 模型名称
-  temperature Float?   // 温度参数（可选）
-  maxTokens   Int?     // 最大 token 数（可选）
+  id           BigInt   @id
+  name         String? // 提供商名称（可选，用于标识）
+  provider     String // 提供商类型: openai, anthropic, custom
+  apiKey       String // API 密钥
+  baseURL      String? // 基础 URL（可选）
+  model        String // 模型名称
+  temperature  Float? // 温度参数（可选）
+  maxTokens    Int? // 最大 token 数（可选）
   organization String? // OpenAI 组织 ID（可选）
-  isDefault   Boolean  @default(false) // 是否默认提供商
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isDefault    Boolean  @default(false) // 是否默认提供商
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([provider])
   @@index([isDefault])
