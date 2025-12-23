@@ -1,5 +1,5 @@
 import { useAIChat } from '@renderer/hooks/use-ai-chat'
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { MessageItem } from '@renderer/chat/message-item'
 import '@renderer/assets/chat.css'
 import { ChatInput } from '@renderer/chat/chat-input'
@@ -27,6 +27,11 @@ export const Chat: React.FC<ChatProps> = ({
   })
 
   const loadingMessages = useChatStore((state) => state.loadingMessages)
+  const stopStream = useChatStore((state) => state.stopStream)
+
+  const handleStopStream = useCallback(() => {
+    stopStream()
+  }, [stopStream])
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
@@ -156,7 +161,9 @@ export const Chat: React.FC<ChatProps> = ({
           <div className="thread-content-max-width mx-auto w-full sticky bottom-0 left-0 right-0">
             <div className="py-4 px-8 bg-background">
               <ChatInput
-                sendDisabled={isSending || !hasConfig}
+                sendDisabled={!hasConfig}
+                isSending={isSending}
+                onStop={handleStopStream}
                 resetChat={() => {
                   resetChat()
                 }}
