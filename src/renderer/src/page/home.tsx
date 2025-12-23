@@ -1,22 +1,8 @@
 import { useEffect, useState } from 'react'
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarProvider,
-  SidebarTrigger
-} from '@renderer/components/ui/sidebar'
-import { Plus } from 'lucide-react'
+import { SidebarProvider } from '@renderer/components/ui/sidebar'
 import { useChatStore } from '@renderer/stores/chatStore'
 import { AddAiModelDialog } from '@renderer/components/AddAiModelDialog'
-import { ChatSessionList } from '@renderer/components/ChatSessionList'
+import { AppSidebar } from '@renderer/components/AppSidebar'
 import { Chat } from '@renderer/page/chat'
 import type { AIConfig } from '@/types/chat'
 import type { AiProvider } from '@/types/ai-provider'
@@ -73,14 +59,12 @@ export const Home: React.FC = () => {
       model: provider.model,
       temperature: provider.temperature || undefined,
       maxTokens: provider.maxTokens || undefined,
-      openai: provider.organization
-        ? { organization: provider.organization }
-        : undefined
+      openai: provider.organization ? { organization: provider.organization } : undefined
     }
   }
 
   // 优先使用默认 provider，其次使用 store 中的 config，最后使用默认配置
-  const aiConfig = defaultProvider ? buildAIConfig(defaultProvider) : (config || defaultConfig)
+  const aiConfig = defaultProvider ? buildAIConfig(defaultProvider) : config || defaultConfig
   const hasConfig = !!(defaultProvider || config)
 
   // 新建对话
@@ -91,38 +75,7 @@ export const Home: React.FC = () => {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-screen">
-        <Sidebar variant="inset">
-          <SidebarHeader>
-            <div className="flex items-center gap-2 px-2 py-2">
-              <SidebarTrigger />
-            </div>
-          </SidebarHeader>
-          <SidebarContent>
-            <SidebarGroup>
-              <SidebarGroupLabel>菜单</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      onClick={() => setAddModelOpen(true)}
-                      tooltip="添加 AI Model"
-                    >
-                      <Plus />
-                      <span>添加 AI Model</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-            <SidebarGroup>
-              <SidebarGroupLabel>对话</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <ChatSessionList onNewChat={handleNewChat} />
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </SidebarContent>
-          <SidebarFooter />
-        </Sidebar>
+        <AppSidebar onAddModel={() => setAddModelOpen(true)} onNewChat={handleNewChat} />
         <Chat
           aiConfig={aiConfig}
           loadingProvider={loadingProvider}
