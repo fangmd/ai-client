@@ -83,7 +83,10 @@ export const Chat: React.FC<ChatProps> = ({
     const resizeObserver = new ResizeObserver(() => {
       if (needScrollToBottomRef.current) {
         logDebug('内容高度变化，执行滚动')
-        scrollToBottom('instant')
+        // TODO: 没有找到合适的时机，滚动到底部
+        setTimeout(() => {
+          scrollToBottom('instant')
+        }, 50)
         needScrollToBottomRef.current = false
       }
     })
