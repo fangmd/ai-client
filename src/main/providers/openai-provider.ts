@@ -1,5 +1,5 @@
 import OpenAI from 'openai'
-import type { Message, AIConfig } from '@/types/chat'
+import type { Message, AIConfig } from '@/types/chat-type'
 import type { AIProvider } from './index'
 import { logInfo, logError, logDebug, logWarn } from '../utils/logger'
 

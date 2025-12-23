@@ -4,7 +4,9 @@ import { MessageItem } from '@renderer/chat/message-item'
 import '@renderer/assets/chat.css'
 import { ChatInput } from '@renderer/chat/chat-input'
 import { LoadingAnimation } from '@renderer/components/loading'
-import type { AIConfig } from '@/types/chat'
+import type { AIConfig } from '@/types/chat-type'
+import { useChatStore } from '@renderer/stores/chatStore'
+import { logDebug } from '@renderer/utils'
 
 interface ChatProps {
   aiConfig: AIConfig
@@ -24,9 +26,14 @@ export const Chat: React.FC<ChatProps> = ({
     defaultProviderId
   })
 
+  const loadingMessages = useChatStore((state) => state.loadingMessages)
+
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null)
   const isNearBottomRef = useRef(true)
+  const prevLoadingRef = useRef(false)
+  const needScrollToBottomRef = useRef(false)
 
   // 检查是否在底部附近（距离底部100px内）
   const checkIfNearBottom = () => {
@@ -38,8 +45,8 @@ export const Chat: React.FC<ChatProps> = ({
     return distanceFromBottom < 100
   }
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  const scrollToBottom = (behavior: 'smooth' | 'instant' = 'smooth') => {
+    messagesEndRef.current?.scrollIntoView({ behavior })
   }
 
   // 监听滚动事件，更新是否在底部附近的状态
@@ -56,6 +63,33 @@ export const Chat: React.FC<ChatProps> = ({
     return () => {
       container.removeEventListener('scroll', handleScroll)
     }
+  }, [])
+
+  // 消息加载完成时，设置标志等待内容渲染后滚动
+  useEffect(() => {
+    // 检测 loadingMessages 从 true 变为 false（加载完成）
+    if (prevLoadingRef.current && !loadingMessages && messages.length > 0) {
+      logDebug('消息加载完成，等待内容渲染后滚动', messages.length)
+      needScrollToBottomRef.current = true
+    }
+    prevLoadingRef.current = loadingMessages
+  }, [loadingMessages, messages.length])
+
+  // 使用 ResizeObserver 监听内容高度变化，确保在 DOM 渲染完成后滚动
+  useEffect(() => {
+    const container = messagesContainerRef.current
+    if (!container) return
+
+    const resizeObserver = new ResizeObserver(() => {
+      if (needScrollToBottomRef.current) {
+        logDebug('内容高度变化，执行滚动')
+        scrollToBottom('instant')
+        needScrollToBottomRef.current = false
+      }
+    })
+
+    resizeObserver.observe(container)
+    return () => resizeObserver.disconnect()
   }, [])
 
   // 消息增加时，如果用户在底部附近，自动滚动到底部
@@ -76,7 +110,12 @@ export const Chat: React.FC<ChatProps> = ({
     role: msg.role,
     content: msg.content,
     timestamp: new Date(msg.createdAt).getTime(),
-    status: msg.status === 'pending' ? 'sending' as const : msg.status === 'error' ? 'error' as const : 'done' as const
+    status:
+      msg.status === 'pending'
+        ? ('sending' as const)
+        : msg.status === 'error'
+          ? ('error' as const)
+          : ('done' as const)
   }))
 
   return (
@@ -86,7 +125,10 @@ export const Chat: React.FC<ChatProps> = ({
           className="flex-1 flex flex-col w-full overflow-y-auto min-h-full"
           ref={scrollContainerRef}
         >
-          <div className="thread-content-max-width mx-auto flex-1 w-full px-4">
+          <div
+            className="thread-content-max-width mx-auto flex-1 w-full px-4"
+            ref={messagesContainerRef}
+          >
             {displayMessages.map((message) => (
               <MessageItem key={message.id} message={message} />
             ))}

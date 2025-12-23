@@ -1,4 +1,4 @@
-import type { Message, AIConfig } from '@/types/chat'
+import type { Message, AIConfig } from '@/types/chat-type'
 
 /**
  * 统一响应格式

@@ -21,7 +21,7 @@ interface AppSidebarProps {
 
 export const AppSidebar: React.FC<AppSidebarProps> = ({ onAddModel, onNewChat }) => {
   return (
-    <Sidebar>
+    <Sidebar collapsible="icon">
       <SidebarHeader>
         <div className="flex items-center gap-2 px-2 py-2">
           <SidebarTrigger />

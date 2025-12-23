@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react'
-import type { AIConfig } from '@/types/chat'
+import type { AIConfig } from '@/types/chat-type'
 import type { IPCResponse } from '@/preload/types'
 import { IPC_CHANNELS } from '@/common/constants/ipc'
 import { useChatStore } from '@renderer/stores/chatStore'
@@ -34,25 +34,44 @@ export const useAIChat = ({ config, defaultProviderId }: UseAIChatOptions) => {
     resetChat,
     loadSessions,
     appendToLocalMessage,
-    setIsSending
+    setIsSending,
+    registerStopStream,
+    unregisterStopStream
   } = useChatStore()
 
   const requestIdRef = useRef<string | null>(null)
   const unsubscribeRefs = useRef<Array<() => void>>([])
   const statusRef = useRef<ChatStatus>('ready')
 
+  /**
+   * 停止当前流式消息
+   */
+  const stopCurrentStream = () => {
+    if (requestIdRef.current) {
+      window.electron.ipcRenderer.send(IPC_CHANNELS.ai.cancelChat, {
+        requestId: requestIdRef.current
+      })
+      requestIdRef.current = null
+    }
+    // 清理所有监听器
+    unsubscribeRefs.current.forEach((unsubscribe) => unsubscribe())
+    unsubscribeRefs.current = []
+    setIsSending(false)
+    statusRef.current = 'ready'
+  }
+
+  // 注册停止流式消息的回调函数
+  useEffect(() => {
+    registerStopStream(stopCurrentStream)
+    return () => {
+      unregisterStopStream()
+    }
+  }, [])
+
   // 组件卸载时取消请求和清理监听器
   useEffect(() => {
     return () => {
-      // 取消请求
-      if (requestIdRef.current) {
-        window.electron.ipcRenderer.send(IPC_CHANNELS.ai.cancelChat, {
-          requestId: requestIdRef.current
-        })
-      }
-      // 清理所有监听器
-      unsubscribeRefs.current.forEach((unsubscribe) => unsubscribe())
-      unsubscribeRefs.current = []
+      stopCurrentStream()
     }
   }, [])
 

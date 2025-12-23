@@ -15,7 +15,9 @@ export const ChatSessionList: React.FC<ChatSessionListProps> = ({ onNewChat }) =
     loadingSessions,
     loadSessions,
     setCurrentSession,
-    deleteSession
+    deleteSession,
+    isSending,
+    stopStream
   } = useChatStore()
 
   // 初始化时加载会话列表
@@ -25,6 +27,10 @@ export const ChatSessionList: React.FC<ChatSessionListProps> = ({ onNewChat }) =
 
   const handleSelectSession = (session: ChatSession) => {
     if (session.id !== currentSessionId) {
+      // 如果正在处理流式消息，先停止
+      if (isSending) {
+        stopStream()
+      }
       setCurrentSession(session.id)
     }
   }

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { AIConfig } from '@/types/chat'
+import type { AIConfig } from '@/types/chat-type'
 import type {
   IPCResponse,
   SerializedChatSession,
@@ -46,6 +46,9 @@ interface ChatState {
   loadingMessages: boolean
   isSending: boolean
 
+  // 停止流式消息的回调函数
+  stopStreamFn: (() => void) | null
+
   // Actions - 配置
   setConfig: (config: AIConfig) => void
   setCurrentAiProviderId: (aiProviderId: string) => void
@@ -75,6 +78,11 @@ interface ChatState {
   addLocalMessage: (message: Message) => void
   updateLocalMessage: (id: string, updates: Partial<Message>) => void
   appendToLocalMessage: (id: string, content: string) => void
+
+  // Actions - 流式消息控制
+  registerStopStream: (fn: () => void) => void
+  unregisterStopStream: () => void
+  stopStream: () => void
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -86,6 +94,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   loadingSessions: false,
   loadingMessages: false,
   isSending: false,
+  stopStreamFn: null,
 
   setConfig: (config) => set({ config }),
 
@@ -346,5 +355,31 @@ export const useChatStore = create<ChatState>((set, get) => ({
         m.id === id ? { ...m, content: m.content + content } : m
       )
     }))
+  },
+
+  // ========== 流式消息控制 ==========
+
+  /**
+   * 注册停止流式消息的回调函数
+   */
+  registerStopStream: (fn) => {
+    set({ stopStreamFn: fn })
+  },
+
+  /**
+   * 取消注册停止流式消息的回调函数
+   */
+  unregisterStopStream: () => {
+    set({ stopStreamFn: null })
+  },
+
+  /**
+   * 停止当前流式消息
+   */
+  stopStream: () => {
+    const { stopStreamFn } = get()
+    if (stopStreamFn) {
+      stopStreamFn()
+    }
   }
 }))
