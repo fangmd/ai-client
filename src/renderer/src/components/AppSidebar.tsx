@@ -11,16 +11,15 @@ import {
   SidebarMenuItem,
   SidebarTrigger
 } from '@renderer/components/ui/sidebar'
-import { Plus, Settings } from 'lucide-react'
+import { Settings } from 'lucide-react'
 import { ChatSessionList } from '@renderer/components/ChatSessionList'
 import { useNavigate, useLocation } from 'react-router-dom'
 
 interface AppSidebarProps {
-  onAddModel: () => void
   onNewChat: () => void
 }
 
-export const AppSidebar: React.FC<AppSidebarProps> = ({ onAddModel, onNewChat }) => {
+export const AppSidebar: React.FC<AppSidebarProps> = ({ onNewChat }) => {
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -34,19 +33,6 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({ onAddModel, onNewChat })
         </div>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>菜单</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton onClick={onAddModel} tooltip="添加 AI Model">
-                  <Plus />
-                  <span>添加 AI Model</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
         <SidebarGroup>
           <SidebarGroupLabel>对话</SidebarGroupLabel>
           <SidebarGroupContent>

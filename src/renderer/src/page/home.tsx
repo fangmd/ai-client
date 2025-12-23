@@ -77,7 +77,7 @@ export const Home: React.FC = () => {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-screen">
-        <AppSidebar onAddModel={() => setAddModelOpen(true)} onNewChat={handleNewChat} />
+        <AppSidebar onNewChat={handleNewChat} />
         <Routes>
           <Route
             index
