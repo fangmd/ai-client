@@ -28,3 +28,30 @@ model AiProvider {
   @@index([isDefault])
   @@map("ai_provider")
 }
+
+model ChatSession {
+  id           BigInt   @id
+  title        String // 对话标题
+  aiProviderId BigInt // 关联的 AI Provider ID（逻辑外键，必填）
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([aiProviderId])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@map("chat_session")
+}
+
+model Message {
+  id          BigInt   @id
+  sessionId   BigInt // 所属会话 ID（逻辑外键）
+  role        String // 角色: user, assistant, system
+  content     String // 消息内容
+  status      String? // 状态: sent(已发送), pending(发送中), error(错误)
+  totalTokens Int? // Token 总数（可选）
+  createdAt   DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([createdAt])
+  @@map("message")
+}

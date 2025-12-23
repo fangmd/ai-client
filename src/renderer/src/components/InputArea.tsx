@@ -1,18 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Button } from '@renderer/components/ui/button'
 import { useChatStore } from '@renderer/stores/chatStore'
-import { aiService } from '@renderer/services/aiService'
 
 export const InputArea: React.FC = () => {
   const [input, setInput] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const abortControllerRef = useRef<AbortController | null>(null)
 
   const isSending = useChatStore((state) => state.isSending)
   const config = useChatStore((state) => state.config)
-  const addMessage = useChatStore((state) => state.addMessage)
-  const updateMessage = useChatStore((state) => state.updateMessage)
-  const appendToMessage = useChatStore((state) => state.appendToMessage)
   const setIsSending = useChatStore((state) => state.setIsSending)
 
   useEffect(() => {
@@ -29,68 +24,9 @@ export const InputArea: React.FC = () => {
     setInput('')
     setIsSending(true)
 
-    // 添加用户消息
-    addMessage({
-      role: 'user',
-      content: userMessage,
-      status: 'done'
-    })
-
-    // 添加助手消息（占位）
-    const assistantMessageId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-    addMessage({
-      role: 'assistant',
-      content: '',
-      status: 'sending'
-    })
-
-    // 设置 AI 配置
-    aiService.setConfig(config)
-
-    // 创建 AbortController
-    abortControllerRef.current = new AbortController()
-
-    try {
-      // 准备消息历史（获取最新状态）
-      const currentMessages = useChatStore.getState().messages
-      const messageHistory = [
-        ...currentMessages,
-        { role: 'user' as const, content: userMessage, id: '', timestamp: 0 }
-      ]
-
-      // 流式调用
-      await aiService.streamChat(messageHistory, {
-        onChunk: (chunk) => {
-          const currentMessages = useChatStore.getState().messages
-          const lastMessage = currentMessages[currentMessages.length - 1]
-          if (lastMessage && lastMessage.role === 'assistant') {
-            appendToMessage(lastMessage.id, chunk)
-          }
-        },
-        onDone: () => {
-          const currentMessages = useChatStore.getState().messages
-          const lastMessage = currentMessages[currentMessages.length - 1]
-          if (lastMessage && lastMessage.role === 'assistant') {
-            updateMessage(lastMessage.id, { status: 'done' })
-          }
-          setIsSending(false)
-        },
-        onError: (error) => {
-          const currentMessages = useChatStore.getState().messages
-          const lastMessage = currentMessages[currentMessages.length - 1]
-          if (lastMessage && lastMessage.role === 'assistant') {
-            updateMessage(lastMessage.id, {
-              status: 'error',
-              content: lastMessage.content || `Error: ${error.message}`
-            })
-          }
-          setIsSending(false)
-        },
-        abortSignal: abortControllerRef.current.signal
-      })
-    } catch (error) {
-      setIsSending(false)
-    }
+    // TODO: 使用新的数据库存储方式发送消息
+    console.log('Sending message:', userMessage)
+    setIsSending(false)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -101,11 +37,7 @@ export const InputArea: React.FC = () => {
   }
 
   const handleStop = () => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort()
-      abortControllerRef.current = null
-      setIsSending(false)
-    }
+    setIsSending(false)
   }
 
   return (

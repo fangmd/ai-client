@@ -6,11 +6,10 @@ import { Button } from '@renderer/components/ui/button'
 import { useChatStore } from '@renderer/stores/chatStore'
 
 export const ChatWindow: React.FC = () => {
-  const createSession = useChatStore((state) => state.createSession)
-  const currentSessionId = useChatStore((state) => state.currentSessionId)
+  const resetChat = useChatStore((state) => state.resetChat)
 
   const handleNewChat = () => {
-    createSession()
+    resetChat()
   }
 
   return (

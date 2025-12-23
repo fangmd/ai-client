@@ -28,5 +28,20 @@ export const IPC_CHANNELS = {
     create: 'ai-provider:create',
     // 获取默认 AI Provider
     getDefault: 'ai-provider:get-default'
+  },
+  // Chat Session 模块
+  chatSession: {
+    create: 'chat-session:create',
+    list: 'chat-session:list',
+    get: 'chat-session:get',
+    update: 'chat-session:update',
+    delete: 'chat-session:delete'
+  },
+  // Message 模块
+  message: {
+    create: 'message:create',
+    update: 'message:update',
+    list: 'message:list',
+    append: 'message:append'
   }
 } as const

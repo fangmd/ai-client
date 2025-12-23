@@ -10,10 +10,19 @@ interface ChatProps {
   aiConfig: AIConfig
   loadingProvider: boolean
   hasConfig: boolean
+  defaultProviderId: string | null
 }
 
-export const Chat: React.FC<ChatProps> = ({ aiConfig, loadingProvider, hasConfig }) => {
-  const { messages, sendMessage, status, resetChat } = useAIChat(aiConfig)
+export const Chat: React.FC<ChatProps> = ({
+  aiConfig,
+  loadingProvider,
+  hasConfig,
+  defaultProviderId
+}) => {
+  const { messages, sendMessage, isSending, resetChat } = useAIChat({
+    config: aiConfig,
+    defaultProviderId
+  })
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
@@ -61,6 +70,15 @@ export const Chat: React.FC<ChatProps> = ({ aiConfig, loadingProvider, hasConfig
     scrollToBottom()
   }
 
+  // 转换消息格式用于 MessageItem 组件
+  const displayMessages = messages.map((msg) => ({
+    id: msg.id,
+    role: msg.role,
+    content: msg.content,
+    timestamp: new Date(msg.createdAt).getTime(),
+    status: msg.status === 'pending' ? 'sending' as const : msg.status === 'error' ? 'error' as const : 'done' as const
+  }))
+
   return (
     <div className="min-h-screen bg-background w-full">
       <div className="min-h-screen flex flex-col max-h-screen mx-auto w-full">
@@ -69,11 +87,11 @@ export const Chat: React.FC<ChatProps> = ({ aiConfig, loadingProvider, hasConfig
           ref={scrollContainerRef}
         >
           <div className="thread-content-max-width mx-auto flex-1 w-full px-4">
-            {messages.map((message) => (
+            {displayMessages.map((message) => (
               <MessageItem key={message.id} message={message} />
             ))}
 
-            {status === 'submitted' && (
+            {isSending && messages[messages.length - 1]?.role === 'user' && (
               <div className="Msg__root flex pt-4">
                 <div className="whitespace-pre-wrap msg-content rounded-md">
                   <LoadingAnimation />
@@ -81,13 +99,6 @@ export const Chat: React.FC<ChatProps> = ({ aiConfig, loadingProvider, hasConfig
               </div>
             )}
 
-            {status === 'error' && (
-              <div className="Msg__root flex pt-4">
-                <div className="text-red-500">
-                  Error: Failed to send message. Please check your configuration.
-                </div>
-              </div>
-            )}
             {loadingProvider && (
               <div className="Msg__root flex pt-4">
                 <div className="text-gray-500">加载 AI Provider 配置中...</div>
@@ -100,7 +111,7 @@ export const Chat: React.FC<ChatProps> = ({ aiConfig, loadingProvider, hasConfig
           <div className="thread-content-max-width mx-auto w-full sticky bottom-0 left-0 right-0">
             <div className="py-4 px-8 bg-background">
               <ChatInput
-                sendDisabled={status === 'submitted' || !hasConfig}
+                sendDisabled={isSending || !hasConfig}
                 resetChat={() => {
                   resetChat()
                 }}
