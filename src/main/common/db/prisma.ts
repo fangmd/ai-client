@@ -55,10 +55,17 @@ function createPrismaClient(): PrismaClient {
 
   // 开发模式下开启 SQL 日志
   const isDev = !app.isPackaged
-  return new PrismaClient({
+  const pC = new PrismaClient({
     adapter,
     log: isDev ? ['query', 'info', 'warn', 'error'] : ['warn', 'error']
   })
+
+  pC.$on('query', (e) => {
+    logInfo('Query:', e.query)
+    logInfo('Params:', e.params)
+    logInfo('Duration:', e.duration, 'ms')
+  })
+  return pC
 }
 
 /**
