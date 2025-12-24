@@ -71,6 +71,21 @@ export const Chat: React.FC = () => {
     stopStream()
   }, [stopStream])
 
+  const updateSession = useChatStore((state) => state.updateSession)
+  const currentSessionId = useChatStore((state) => state.currentSessionId)
+
+  const handleProviderChange = useCallback(
+    async (providerId: bigint) => {
+      // 更新本地状态
+      setCurrentAiProviderId(providerId)
+      // 如果有当前会话，同步更新数据库
+      if (currentSessionId) {
+        await updateSession(currentSessionId, { aiProviderId: providerId })
+      }
+    },
+    [setCurrentAiProviderId, currentSessionId, updateSession]
+  )
+
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const messagesContainerRef = useRef<HTMLDivElement | null>(null)
@@ -211,6 +226,9 @@ export const Chat: React.FC = () => {
                   }
                   handleSendMessage(content)
                 }}
+                providers={providers}
+                currentProviderId={currentAiProviderId}
+                onProviderChange={handleProviderChange}
               />
             </div>
           </div>

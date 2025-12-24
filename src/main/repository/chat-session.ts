@@ -55,7 +55,6 @@ export async function getChatSessionById(id: bigint) {
 
 /**
  * 更新对话会话
- * 注意：aiProviderId 创建后不可修改，如需更换 Provider 应创建新会话
  */
 export async function updateChatSession(
   id: bigint,
@@ -64,7 +63,8 @@ export async function updateChatSession(
   return prisma.chatSession.update({
     where: { id },
     data: {
-      title: data.title
+      title: data.title,
+      aiProviderId: data.aiProviderId
     }
   })
 }

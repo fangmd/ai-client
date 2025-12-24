@@ -113,4 +113,5 @@ export type CreateChatSessionData = {
  */
 export type UpdateChatSessionData = {
   title?: string
+  aiProviderId?: bigint
 }

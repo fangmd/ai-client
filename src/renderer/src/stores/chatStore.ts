@@ -57,7 +57,7 @@ interface ChatState {
   loadSessions: () => Promise<void>
   loadSession: (id: bigint) => Promise<void>
   createSession: (aiProviderId: bigint, title?: string) => Promise<bigint | null>
-  updateSession: (id: bigint, data: { title?: string }) => Promise<void>
+  updateSession: (id: bigint, data: { title?: string; aiProviderId?: bigint }) => Promise<void>
   deleteSession: (id: bigint) => Promise<void>
 
   // Actions - 消息管理
@@ -176,7 +176,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   /**
    * 更新会话
    */
-  updateSession: async (id: bigint, data: { title?: string }) => {
+  updateSession: async (id: bigint, data: { title?: string; aiProviderId?: bigint }) => {
     try {
       const response = (await window.electron.ipcRenderer.invoke(
         IPC_CHANNELS.chatSession.update,
