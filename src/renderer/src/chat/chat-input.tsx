@@ -4,17 +4,11 @@ import {
   InputGroupAddon,
   InputGroupTextarea
 } from '@renderer/components/ui/input-group'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@renderer/components/ui/select'
 import { Separator } from '@renderer/components/ui/separator'
 import { ArrowUpIcon, Square } from 'lucide-react'
 import { useState } from 'react'
 import type { AiProvider } from '@/types/ai-provider-type'
+import { ModelSelector } from './model-selector'
 
 interface Props {
   sendDisabled: boolean
@@ -66,26 +60,11 @@ export const ChatInput: React.FC<Props> = ({
         }}
       />
       <InputGroupAddon align="block-end">
-        {providers.length > 0 && (
-          <Select
-            value={currentProviderId?.toString() ?? ''}
-            onValueChange={(value) => onProviderChange?.(BigInt(value))}
-          >
-            <SelectTrigger
-              size="sm"
-              className="w-auto border-none shadow-none bg-transparent hover:bg-muted/50"
-            >
-              <SelectValue placeholder="选择模型" />
-            </SelectTrigger>
-            <SelectContent>
-              {providers.map((p) => (
-                <SelectItem key={p.id.toString()} value={p.id.toString()}>
-                  {p.name || p.model}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+        <ModelSelector
+          providers={providers}
+          currentProviderId={currentProviderId}
+          onProviderChange={onProviderChange}
+        />
         <div className="ml-auto"></div>
         <Separator orientation="vertical" className="h-4!" />
         {isSending ? (
