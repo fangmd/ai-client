@@ -56,6 +56,20 @@ model Message {
   @@map("message")
 }
 
+model Attachment {
+  id        BigInt   @id
+  messageId BigInt // 所属消息 ID（逻辑外键）
+  type      String // 类型: image, file
+  name      String // 文件名
+  mimeType  String // MIME 类型
+  size      Int // 文件大小 (bytes)
+  data      String // Base64 编码的文件内容
+  createdAt DateTime @default(now())
+
+  @@index([messageId])
+  @@map("attachment")
+}
+
 model Config {
   key       String   @id // 配置键（唯一标识）
   value     String // 配置值（JSON 字符串）

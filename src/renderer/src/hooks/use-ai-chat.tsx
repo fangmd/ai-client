@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react'
-import type { AIConfig } from '@/types/chat-type'
+import type { AIConfig, Attachment } from '@/types/chat-type'
 import type { IPCResponse } from '@/types'
 import { IPC_CHANNELS } from '@/common/constants/ipc'
 import { useChatStore } from '@renderer/stores/chatStore'
@@ -78,7 +78,7 @@ export const useAIChat = ({ config, defaultProviderId }: UseAIChatOptions) => {
   /**
    * 发送消息
    */
-  const sendMessage = async (content: string) => {
+  const sendMessage = async (content: string, attachments?: Attachment[]) => {
     if (!content.trim() || isSending) {
       return
     }
@@ -122,6 +122,7 @@ export const useAIChat = ({ config, defaultProviderId }: UseAIChatOptions) => {
     const userMessage = await addMessage(sessionId, {
       role: 'user',
       content: content.trim(),
+      attachments,
       status: 'sent'
     })
 
@@ -153,11 +154,13 @@ export const useAIChat = ({ config, defaultProviderId }: UseAIChatOptions) => {
       .filter((msg) => msg.id !== assistantMessageId)
       .map((msg) => ({
         role: msg.role,
-        content: msg.content
+        content: msg.content,
+        attachments: msg.attachments
       }))
     messageList.push({
       role: 'user',
-      content: content.trim()
+      content: content.trim(),
+      attachments
     })
 
     // 生成请求 ID

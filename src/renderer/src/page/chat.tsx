@@ -4,7 +4,7 @@ import { MessageItem } from '@renderer/chat/message-item'
 import '@renderer/assets/chat.css'
 import { ChatInput } from '@renderer/chat/chat-input'
 import { LoadingAnimation } from '@renderer/components/loading'
-import type { AIConfig } from '@/types/chat-type'
+import type { AIConfig, Attachment } from '@/types/chat-type'
 import type { AiProvider } from '@/types/ai-provider-type'
 import { useChatStore } from '@renderer/stores/chatStore'
 import { useAiProviderStore } from '@renderer/stores/ai-provider-store'
@@ -160,8 +160,8 @@ export const Chat: React.FC = () => {
     }
   }, [messages])
 
-  const handleSendMessage = (message: string) => {
-    sendMessage(message)
+  const handleSendMessage = (message: string, attachments?: Attachment[]) => {
+    sendMessage(message, attachments)
     scrollToBottom()
   }
 
@@ -170,6 +170,7 @@ export const Chat: React.FC = () => {
     id: msg.id,
     role: msg.role,
     content: msg.content,
+    attachments: msg.attachments,
     timestamp: new Date(msg.createdAt).getTime(),
     status:
       msg.status === 'pending'
@@ -220,11 +221,11 @@ export const Chat: React.FC = () => {
                 resetChat={() => {
                   resetChat()
                 }}
-                onSend={(content: string) => {
-                  if (!content || !hasConfig) {
+                onSend={(content: string, attachments?: Attachment[]) => {
+                  if ((!content && (!attachments || attachments.length === 0)) || !hasConfig) {
                     return
                   }
-                  handleSendMessage(content)
+                  handleSendMessage(content, attachments)
                 }}
                 providers={providers}
                 currentProviderId={currentAiProviderId}

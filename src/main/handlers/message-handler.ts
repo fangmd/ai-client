@@ -1,13 +1,17 @@
 import { ipcMain } from 'electron'
 import { IPC_CHANNELS } from '@/common/constants'
 import { responseSuccess, responseError } from '@/common/response'
-import type { CreateMessageData, UpdateMessageData, MessageRole, DbMessageStatus } from '@/types'
+import type { CreateMessageData, UpdateMessageData, MessageRole, DbMessageStatus, Attachment } from '@/types'
 import {
   createMessage,
   updateMessage,
   appendMessageContent,
   listMessages
 } from '@/main/repository/message'
+import {
+  createAttachments,
+  listAttachmentsByMessageIds
+} from '@/main/repository/attachment'
 import { chatSessionExists } from '@/main/repository/chat-session'
 import { logError, logInfo } from '@/main/utils'
 
@@ -29,6 +33,7 @@ export class MessageHandler {
           sessionId: bigint
           role: MessageRole
           content: string
+          attachments?: Attachment[]
           status?: DbMessageStatus
           totalTokens?: number
         }
@@ -37,6 +42,7 @@ export class MessageHandler {
           sessionId: data.sessionId,
           role: data.role,
           contentLength: data.content.length,
+          attachmentsCount: data.attachments?.length ?? 0,
           status: data.status,
           totalTokens: data.totalTokens
         })
@@ -57,8 +63,36 @@ export class MessageHandler {
             totalTokens: data.totalTokens
           }
 
+          // 创建消息
           const message = await createMessage(messageData)
-          const response = responseSuccess(message)
+
+          // 如果有附件，创建附件记录
+          let attachments: Attachment[] | undefined
+          if (data.attachments && data.attachments.length > 0) {
+            const attachmentData = data.attachments.map((a) => ({
+              messageId: message.id,
+              type: a.type,
+              name: a.name,
+              mimeType: a.mimeType,
+              size: a.size,
+              data: a.data
+            }))
+            const dbAttachments = await createAttachments(attachmentData)
+            attachments = dbAttachments.map((a) => ({
+              id: a.id,
+              type: a.type as 'image' | 'file',
+              name: a.name,
+              mimeType: a.mimeType,
+              size: a.size,
+              data: a.data
+            }))
+          }
+
+          // 返回消息和附件
+          const response = responseSuccess({
+            ...message,
+            attachments
+          })
           logInfo('【IPC Handler】message:create success, response:', response)
           return response
         } catch (error) {
@@ -113,7 +147,32 @@ export class MessageHandler {
       logInfo('【IPC Handler】message:list called, params:', data)
       try {
         const messages = await listMessages(data.sessionId)
-        const response = responseSuccess(messages)
+
+        // 批量查询所有消息的附件
+        const messageIds = messages.map((m) => m.id)
+        const attachmentsMap = await listAttachmentsByMessageIds(messageIds)
+
+        // 合并消息和附件
+        const messagesWithAttachments = messages.map((msg) => {
+          const dbAttachments = attachmentsMap.get(msg.id) || []
+          const attachments: Attachment[] | undefined =
+            dbAttachments.length > 0
+              ? dbAttachments.map((a) => ({
+                  id: a.id,
+                  type: a.type as 'image' | 'file',
+                  name: a.name,
+                  mimeType: a.mimeType,
+                  size: a.size,
+                  data: a.data
+                }))
+              : undefined
+          return {
+            ...msg,
+            attachments
+          }
+        })
+
+        const response = responseSuccess(messagesWithAttachments)
         logInfo('【IPC Handler】message:list success, count:', messages.length)
         return response
       } catch (error) {

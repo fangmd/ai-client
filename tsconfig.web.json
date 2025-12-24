@@ -9,7 +9,7 @@
     "src/types",
     "src/main/repository/example.ts",
     "src/main/common/db"
-  ],
+, "src/main/utils/snowflake.ts"  ],
   "compilerOptions": {
     "composite": true,
     "jsx": "react-jsx",

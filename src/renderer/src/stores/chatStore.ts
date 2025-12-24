@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { AIConfig } from '@/types/chat-type'
+import type { AIConfig, Attachment } from '@/types/chat-type'
 import type {
   IPCResponse,
   SerializedChatSession,
@@ -26,6 +26,7 @@ export interface Message {
   sessionId: bigint
   role: 'user' | 'assistant' | 'system'
   content: string
+  attachments?: Attachment[]  // 附件列表
   status: 'sent' | 'pending' | 'error' | null
   totalTokens: number | null
   createdAt: string
@@ -63,7 +64,7 @@ interface ChatState {
   // Actions - 消息管理
   addMessage: (
     sessionId: bigint,
-    message: { role: 'user' | 'assistant' | 'system'; content: string; status?: 'sent' | 'pending' | 'error' }
+    message: { role: 'user' | 'assistant' | 'system'; content: string; attachments?: Attachment[]; status?: 'sent' | 'pending' | 'error' }
   ) => Promise<Message | null>
   updateMessage: (id: bigint, data: { content?: string; status?: 'sent' | 'pending' | 'error'; totalTokens?: number }) => Promise<void>
   appendToMessage: (id: bigint, content: string) => Promise<void>
@@ -232,6 +233,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           sessionId,
           role: message.role,
           content: message.content,
+          attachments: message.attachments,
           status: message.status || 'sent'
         }
       )) as IPCResponse<SerializedMessage>

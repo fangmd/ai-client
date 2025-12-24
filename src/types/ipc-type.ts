@@ -18,6 +18,8 @@ export interface SerializedChatSession {
   updatedAt: string
 }
 
+import type { Attachment } from './chat-type'
+
 /**
  * IPC 传输的 Message 类型
  */
@@ -26,6 +28,7 @@ export interface SerializedMessage {
   sessionId: bigint
   role: 'user' | 'assistant' | 'system'
   content: string
+  attachments?: Attachment[]  // 附件列表
   status: 'sent' | 'pending' | 'error' | null
   totalTokens: number | null
   createdAt: string

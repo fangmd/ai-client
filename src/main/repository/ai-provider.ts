@@ -1,5 +1,5 @@
 import { prisma } from '@/main/common/db/prisma'
-import { generateUUID } from '@/common/snowflake'
+import { generateUUID } from '@/main/utils/snowflake'
 import type { CreateAiProviderData, UpdateAiProviderData } from '@/types'
 
 /**

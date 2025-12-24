@@ -11,6 +11,23 @@ export type MessageRole = 'user' | 'assistant' | 'system'
 export type MessageStatus = 'sending' | 'done' | 'error'
 
 /**
+ * 附件类型
+ */
+export type AttachmentType = 'image' | 'file'
+
+/**
+ * 附件数据
+ */
+export interface Attachment {
+  id: bigint              // 唯一标识 (snowflake)
+  type: AttachmentType    // 附件类型
+  name: string            // 文件名
+  mimeType: string        // MIME 类型 (e.g., 'image/png')
+  size: number            // 文件大小 (bytes)
+  data: string            // Base64 编码的文件内容
+}
+
+/**
  * 消息类型（前端）
  */
 export interface Message {
@@ -19,6 +36,7 @@ export interface Message {
   content: string
   timestamp: number
   status?: MessageStatus
+  attachments?: Attachment[]  // 附件列表
 }
 
 /**
@@ -70,6 +88,20 @@ export type DbMessage = {
 }
 
 /**
+ * 数据库 Attachment 类型
+ */
+export type DbAttachment = {
+  id: bigint
+  messageId: bigint
+  type: string
+  name: string
+  mimeType: string
+  size: number
+  data: string
+  createdAt: Date
+}
+
+/**
  * Message 创建数据
  */
 export type CreateMessageData = {
@@ -78,6 +110,18 @@ export type CreateMessageData = {
   content: string
   status?: DbMessageStatus
   totalTokens?: number
+}
+
+/**
+ * Attachment 创建数据
+ */
+export type CreateAttachmentData = {
+  messageId: bigint
+  type: AttachmentType
+  name: string
+  mimeType: string
+  size: number
+  data: string
 }
 
 /**

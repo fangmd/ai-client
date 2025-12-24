@@ -26,8 +26,26 @@ export const MessageItem: React.FC<Props> = ({ message }) => {
   if (message.role === 'user') {
     return (
       <div className="group">
-        <div className="flex  justify-end pt-[20px]">
-          <div className="bg-msg-bg rounded-[16px] px-[16px] py-[4px]">{message.content}</div>
+        <div className="flex flex-col items-end pt-[20px] gap-2">
+          {/* 显示附件图片 */}
+          {message.attachments && message.attachments.length > 0 && (
+            <div className="flex gap-2 flex-wrap justify-end max-w-[80%]">
+              {message.attachments.map((attachment) =>
+                attachment.type === 'image' ? (
+                  <img
+                    key={attachment.id.toString()}
+                    src={`data:${attachment.mimeType};base64,${attachment.data}`}
+                    alt={attachment.name}
+                    className="max-w-[200px] max-h-[200px] rounded-lg object-cover"
+                  />
+                ) : null
+              )}
+            </div>
+          )}
+          {/* 显示文本内容 */}
+          {message.content && (
+            <div className="bg-msg-bg rounded-[16px] px-[16px] py-[4px]">{message.content}</div>
+          )}
         </div>
         <div className="flex justify-end mr-2 py-1 opacity-0 pointer-events-none transition-opacity delay-[2000ms] group-hover:opacity-100 group-hover:pointer-events-auto group-hover:delay-0">
           <Button

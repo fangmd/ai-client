@@ -1,4 +1,8 @@
 import OpenAI from 'openai'
+import type {
+  ChatCompletionContentPart,
+  ChatCompletionMessageParam
+} from 'openai/resources/chat/completions'
 import type { Message, AIConfig } from '@/types/chat-type'
 import type { AIProvider } from './index'
 import { logInfo, logError, logDebug, logWarn } from '../utils/logger'
@@ -66,11 +70,44 @@ export class OpenAIProvider implements AIProvider {
         organization: config.openai?.organization
       })
 
-      // 转换消息格式
-      const openaiMessages = messages.map((msg) => ({
-        role: msg.role as 'user' | 'assistant' | 'system',
-        content: msg.content
-      }))
+      // 转换消息格式（支持 Vision API）
+      const openaiMessages: ChatCompletionMessageParam[] = messages.map((msg) => {
+        const hasImageAttachments = msg.attachments?.some((a) => a.type === 'image')
+
+        // 有图片附件时，使用 Vision 格式（只有 user 角色支持多模态内容）
+        if (hasImageAttachments && msg.role === 'user') {
+          const content: ChatCompletionContentPart[] = []
+
+          // 添加文本内容
+          if (msg.content) {
+            content.push({ type: 'text', text: msg.content })
+          }
+
+          // 添加图片
+          msg.attachments
+            ?.filter((a) => a.type === 'image')
+            .forEach((a) => {
+              content.push({
+                type: 'image_url',
+                image_url: {
+                  url: `data:${a.mimeType};base64,${a.data}`,
+                  detail: 'auto'
+                }
+              })
+            })
+
+          return {
+            role: 'user' as const,
+            content
+          }
+        }
+
+        // 无附件或非 user 角色，使用普通格式
+        return {
+          role: msg.role,
+          content: msg.content
+        } as ChatCompletionMessageParam
+      })
 
       // 创建流式请求
       logDebug('Creating stream request to OpenAI API')
@@ -98,9 +135,9 @@ export class OpenAIProvider implements AIProvider {
           return
         }
 
-        logDebug('OpenAI stream chat chunk received', {
-          chunk: chunk
-        })
+        // logDebug('OpenAI stream chat chunk received', {
+        //   chunk: chunk
+        // })
 
         const content = chunk.choices[0]?.delta?.content
         if (content) {

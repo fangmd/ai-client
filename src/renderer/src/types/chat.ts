@@ -1,3 +1,5 @@
+import type { Attachment } from '@/types/chat-type'
+
 /**
  * 消息角色类型
  */
@@ -17,6 +19,7 @@ export interface Message {
   content: string
   timestamp: number
   status?: MessageStatus
+  attachments?: Attachment[]  // 附件列表
 }
 
 /**
