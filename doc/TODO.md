@@ -11,7 +11,8 @@
 
 ## 待开发
 
-- [ ] tools support
+- [ ] tools support openai 内置 tools
+- [ ] tools support 客户端 自定义 tools
 - [ ] 增加 project 概念
 - [ ] memory
 - [ ] 支持 claude 模型
