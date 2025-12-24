@@ -60,12 +60,40 @@ function createPrismaClient(): PrismaClient {
     log: isDev ? ['query', 'info', 'warn', 'error'] : ['warn', 'error']
   })
 
-  pC.$on('query', (e) => {
-    logInfo('Query:', e.query)
-    logInfo('Params:', e.params)
-    logInfo('Duration:', e.duration, 'ms')
-  })
+  if (isDev) {
+    pC.$on('query', (e) => {
+      logInfo('Query:', e.query)
+      logInfo('Params:', e.params)
+      logInfo('Duration:', e.duration, 'ms')
+    })
+  }
   return pC
+}
+
+/**
+ * 配置 SQLite 性能优化选项
+ * 包括 WAL 模式、缓存大小等
+ */
+export async function configureSqliteOptimizations(): Promise<void> {
+  try {
+    // 启用 WAL 模式，提高并发读写性能
+    await prisma.$executeRawUnsafe('PRAGMA journal_mode = WAL')
+    logInfo('SQLite WAL mode enabled')
+
+    // 设置缓存大小为 32MB（负数表示 KB）
+    await prisma.$executeRawUnsafe('PRAGMA cache_size = -32000')
+    logInfo('SQLite cache size set to 32MB')
+
+    // 设置同步模式为 NORMAL（WAL 模式下的推荐设置）
+    await prisma.$executeRawUnsafe('PRAGMA synchronous = NORMAL')
+    logInfo('SQLite synchronous mode set to NORMAL')
+
+    // 启用外键约束检查
+    await prisma.$executeRawUnsafe('PRAGMA foreign_keys = ON')
+    logInfo('SQLite foreign keys enabled')
+  } catch (error) {
+    logError('Failed to configure SQLite optimizations:', error)
+  }
 }
 
 /**

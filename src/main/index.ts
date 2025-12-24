@@ -3,7 +3,7 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { registerHandlers, unregisterHandlers } from './handlers'
-import { initializeDatabase } from './common/db/prisma'
+import { initializeDatabase, configureSqliteOptimizations } from './common/db/prisma'
 import { initializeLogger, logError, logInfo } from './utils'
 ;(BigInt.prototype as any).toJSON = function () {
   return this.toString()
@@ -63,6 +63,9 @@ app.whenReady().then(async () => {
     // TODO: 优化性能，数据库初始化慢
     await initializeDatabase()
     logInfo('initialize database success', Date.now())
+
+    // 配置 SQLite 性能优化（WAL 模式等）
+    await configureSqliteOptimizations()
   } catch (error) {
     logError('Failed to initialize database:', error)
   }

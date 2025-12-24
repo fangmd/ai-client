@@ -4,41 +4,49 @@ import type { DbMessage, CreateMessageData, UpdateMessageData } from '@/types'
 
 /**
  * 创建消息
+ * 使用事务确保数据一致性，减少数据库操作次数
  */
 export async function createMessage(data: CreateMessageData): Promise<DbMessage> {
-  // 创建消息
-  const message = await prisma.message.create({
-    data: {
-      id: generateUUID().valueOf(),
-      sessionId: data.sessionId,
-      role: data.role,
-      content: data.content,
-      status: data.status ?? 'sent',
-      totalTokens: data.totalTokens
+  return prisma.$transaction(async (tx) => {
+    // 如果是用户消息，先检查是否是第一条（在事务内检查）
+    let isFirstUser = false
+    if (data.role === 'user') {
+      const userMsgCount = await tx.message.count({
+        where: { sessionId: data.sessionId, role: 'user' }
+      })
+      isFirstUser = userMsgCount === 0
     }
-  })
 
-  // 更新会话的 updatedAt
-  await prisma.chatSession.update({
-    where: { id: data.sessionId },
-    data: {
+    // 创建消息
+    const message = await tx.message.create({
+      data: {
+        id: generateUUID().valueOf(),
+        sessionId: data.sessionId,
+        role: data.role,
+        content: data.content,
+        status: data.status ?? 'sent',
+        totalTokens: data.totalTokens
+      }
+    })
+
+    // 准备会话更新数据：始终更新 updatedAt，可能更新 title
+    const sessionUpdate: { updatedAt: Date; title?: string } = {
       updatedAt: new Date()
     }
-  })
 
-  // 检查是否为会话的第一条用户消息，如果是则自动生成标题
-  if (data.role === 'user') {
-    const isFirst = await isFirstUserMessage(data.sessionId)
-    if (isFirst) {
-      const title = generateTitleFromContent(data.content)
-      await prisma.chatSession.update({
-        where: { id: data.sessionId },
-        data: { title }
-      })
+    // 如果是第一条用户消息，同时更新标题
+    if (isFirstUser) {
+      sessionUpdate.title = generateTitleFromContent(data.content)
     }
-  }
 
-  return message
+    // 单次更新会话（合并 updatedAt 和 title 更新）
+    await tx.chatSession.update({
+      where: { id: data.sessionId },
+      data: sessionUpdate
+    })
+
+    return message
+  })
 }
 
 /**
@@ -57,8 +65,19 @@ export async function updateMessage(id: bigint, data: UpdateMessageData): Promis
 
 /**
  * 追加消息内容（用于流式响应）
+ * 使用原生 SQL 进行字符串拼接，避免先查询再更新的两次往返
  */
 export async function appendMessageContent(id: bigint, content: string): Promise<DbMessage> {
+  // 使用原生 SQL 直接拼接字符串，更高效
+  const affected = await prisma.$executeRaw`
+    UPDATE message SET content = content || ${content} WHERE id = ${id}
+  `
+
+  if (affected === 0) {
+    throw new Error(`Message not found: ${id}`)
+  }
+
+  // 查询并返回更新后的消息
   const message = await prisma.message.findUnique({
     where: { id }
   })
@@ -67,12 +86,7 @@ export async function appendMessageContent(id: bigint, content: string): Promise
     throw new Error(`Message not found: ${id}`)
   }
 
-  return prisma.message.update({
-    where: { id },
-    data: {
-      content: message.content + content
-    }
-  })
+  return message
 }
 
 /**
