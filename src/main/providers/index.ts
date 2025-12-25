@@ -17,7 +17,7 @@ export interface StreamCallbacks {
   onToolCallProgress?: (toolInfo: ToolCallInfo) => void   // 工具调用进度
   onToolCallComplete?: (toolInfo: ToolCallInfo) => void   // 工具调用完成
   
-  onDone: () => void
+  onDone: (completeText?: string) => void  // 完成回调，可选传递完整文本（用于替换之前累积的 delta）
   onError: (error: Error) => void
 }
 

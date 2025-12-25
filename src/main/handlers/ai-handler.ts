@@ -162,11 +162,12 @@ export class AIHandler {
               }
             },
             
-            onDone: () => {
+            onDone: (completeText?: string) => {
               // 发送完成事件
-              logInfo('【IPC Handler】ai:streamDone, requestId:', requestId)
+              logInfo('【IPC Handler】ai:streamDone, requestId:', requestId, 'hasCompleteText:', !!completeText)
               event.sender.send(IPC_CHANNELS.ai.streamDone, {
-                requestId
+                requestId,
+                completeText: completeText || undefined
               })
               activeRequests.delete(requestId)
             },

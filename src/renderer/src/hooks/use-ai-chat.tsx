@@ -245,11 +245,15 @@ export const useAIChat = ({ config, defaultProviderId }: UseAIChatOptions) => {
     // 监听完成事件
     const unsubscribeDone = window.electron.ipcRenderer.on(
       IPC_CHANNELS.ai.streamDone,
-      async (_event, data: { requestId: string }) => {
+      async (_event, data: { requestId: string; completeText?: string }) => {
         if (data.requestId === requestId) {
+          // 如果有完整文本（来自 response.output_text.done 或 response.content_part.done），
+          // 使用完整文本替换之前累积的 delta
+          const finalContent = data.completeText || fullAssistantContent
+          
           // 流式响应完成，更新数据库中的助手消息内容和状态
           await updateMessage(assistantMessageId, {
-            content: fullAssistantContent,
+            content: finalContent,
             status: 'sent'
           })
 

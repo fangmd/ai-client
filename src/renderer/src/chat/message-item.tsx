@@ -24,7 +24,7 @@ export const MessageItem: React.FC<Props> = ({ message }) => {
   
   if (message.role === 'assistant') {
     return (
-      <div className={clsx('markdown-body', 'pb-[20px] w-full')} key={message.id}>
+      <div className={clsx('markdown-body', 'pb-[20px] w-full overflow-hidden')} key={message.id}>
         {/* remarkPlugins={[remarkGfm]} components={components as any} */}
         <Streamdown isAnimating={message.status === 'sending'}>{message.content}</Streamdown>
       </div>
@@ -33,7 +33,7 @@ export const MessageItem: React.FC<Props> = ({ message }) => {
 
   if (message.role === 'user') {
     return (
-      <div className="group">
+      <div className="group overflow-hidden">
         <div className="flex flex-col items-end pt-[20px] gap-2">
           {/* 显示附件图片 */}
           {message.attachments && message.attachments.length > 0 && (

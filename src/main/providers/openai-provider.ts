@@ -351,6 +351,9 @@ export class OpenAIProvider implements AIProvider {
       // 用于跟踪工具调用状态
       const toolCallsMap = new Map<string, ToolCallInfo>()
 
+      // 用于保存完整文本（当收到 done 事件时）
+      let completeText: string | null = null
+
       // 处理流式响应
       for await (const chunk of stream) {
         // 检查是否已取消
@@ -474,7 +477,33 @@ export class OpenAIProvider implements AIProvider {
             break
           }
 
-          // 8. 响应完成
+          // 8. 文本输出完成 - 包含完整文本
+          case 'response.output_text.done': {
+            const event = chunk as any
+            if (event.text) {
+              // 保存完整文本，用于替换之前累积的 delta
+              completeText = event.text
+              logDebug('Received complete text from output_text.done', {
+                textLength: event.text.length
+              })
+            }
+            break
+          }
+
+          // 9. 内容部分完成 - 包含完整文本
+          case 'response.content_part.done': {
+            const event = chunk as any
+            if (event.part?.type === 'output_text' && event.part?.text) {
+              // 保存完整文本，用于替换之前累积的 delta
+              completeText = event.part.text
+              logDebug('Received complete text from content_part.done', {
+                textLength: event.part.text.length
+              })
+            }
+            break
+          }
+
+          // 10. 响应完成
           case 'response.completed': {
             const event = chunk as any
             logInfo('Response completed', {
@@ -489,9 +518,11 @@ export class OpenAIProvider implements AIProvider {
       logInfo('OpenAI Responses API stream chat completed successfully', {
         model: config.model,
         totalChunks: chunkCount,
-        totalToolCalls: toolCallsMap.size
+        totalToolCalls: toolCallsMap.size,
+        hasCompleteText: !!completeText
       })
-      callbacks.onDone()
+      // 如果有完整文本，传递完整文本用于替换之前累积的 delta
+      callbacks.onDone(completeText || undefined)
     } catch (error) {
       throw error // 重新抛出，由外层处理
     }
