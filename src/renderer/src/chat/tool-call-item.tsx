@@ -1,5 +1,7 @@
-import { CheckCircle, XCircle, Loader2 } from 'lucide-react'
+import { Globe, FolderSearch, Loader2, CheckCircle2, XCircle, Wrench } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import type { Message } from '@/types/chat-type'
+import { cn } from '@renderer/lib/utils'
 
 interface ToolCallItemProps {
   message: Message
@@ -7,33 +9,34 @@ interface ToolCallItemProps {
 
 export function ToolCallItem({ message }: ToolCallItemProps) {
   const { toolCall } = message
-  
+
   if (!toolCall) return null
 
-  // 获取状态图标
-  const getStatusIcon = () => {
-    switch (toolCall.status) {
-      case 'in_progress':
-      case 'searching':
-        return <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
-      case 'completed':
-        return <CheckCircle className="w-4 h-4 text-green-500" />
-      case 'failed':
-        return <XCircle className="w-4 h-4 text-red-500" />
+  // 获取工具图标组件
+  const getToolIcon = () => {
+    const iconClass = 'w-4 h-4'
+    switch (toolCall.type) {
+      case 'web_search':
+        return <Globe className={iconClass} />
+      case 'file_search':
+        return <FolderSearch className={iconClass} />
       default:
-        return null
+        return <Wrench className={iconClass} />
     }
   }
 
-  // 获取工具图标
-  const getToolIcon = () => {
-    switch (toolCall.type) {
-      case 'web_search':
-        return '🔍'
-      case 'file_search':
-        return '📁'
+  // 获取状态颜色
+  const getStatusColor = () => {
+    switch (toolCall.status) {
+      case 'in_progress':
+      case 'searching':
+        return 'text-blue-500'
+      case 'completed':
+        return 'text-green-500'
+      case 'failed':
+        return 'text-red-500'
       default:
-        return '⚙️'
+        return 'text-muted-foreground'
     }
   }
 
@@ -53,9 +56,9 @@ export function ToolCallItem({ message }: ToolCallItemProps) {
   const getStatusText = () => {
     switch (toolCall.status) {
       case 'in_progress':
-        return '准备中...'
+        return '准备中'
       case 'searching':
-        return '搜索中...'
+        return '搜索中'
       case 'completed':
         return '已完成'
       case 'failed':
@@ -65,28 +68,50 @@ export function ToolCallItem({ message }: ToolCallItemProps) {
     }
   }
 
-  return (
-    <div className="tool-call-item bg-muted/50 rounded-lg p-4 my-2 border border-border transition-all">
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-lg">{getToolIcon()}</span>
-        <span className="font-medium text-foreground">
-          {getToolName()}
-        </span>
-        <div className="flex items-center gap-1.5 ml-auto">
-          {getStatusIcon()}
-          <span className="text-sm text-muted-foreground">
-            {getStatusText()}
-          </span>
-        </div>
+  // 构建 Tooltip 内容
+  const tooltipContent = (
+    <div className="space-y-1.5 max-w-xs">
+      <div className="flex items-center gap-2">
+        {getToolIcon()}
+        <span className="font-medium text-background">{getToolName()}</span>
+        <span className={cn('text-xs', getStatusColor())}>{getStatusText()}</span>
       </div>
-      
       {toolCall.query && (
-        <div className="mt-2 text-sm text-muted-foreground bg-background rounded p-2">
+        <div className="text-xs text-background/80 pt-1 border-t border-background/20">
           <span className="font-medium">查询：</span>
           <span className="ml-1">{toolCall.query}</span>
         </div>
       )}
     </div>
   )
-}
 
+  // 获取状态图标（用于小图标显示）
+  const statusIcon = () => {
+    const iconClass = cn('w-3.5 h-3.5', getStatusColor())
+    switch (toolCall.status) {
+      case 'in_progress':
+      case 'searching':
+        return <Loader2 className={cn(iconClass, 'animate-spin')} />
+      case 'completed':
+        return <CheckCircle2 className={iconClass} />
+      case 'failed':
+        return <XCircle className={iconClass} />
+      default:
+        return null
+    }
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 hover:bg-muted transition-colors cursor-default">
+          {getToolIcon()}
+          {statusIcon()}
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-xs">
+        {tooltipContent}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
