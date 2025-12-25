@@ -17,7 +17,7 @@ import {
   deleteChatSession
 } from '@/main/repository/chat-session'
 import { getAiProviderById } from '@/main/repository/ai-provider'
-import { logError, logInfo } from '@/main/utils'
+import { logDebug, logError, logInfo } from '@/main/utils'
 
 /**
  * ChatSession Handler
@@ -91,6 +91,7 @@ export class ChatSessionHandler {
 
         const response = responseSuccess(session)
         logInfo('【IPC Handler】chatSession:get success, messagesCount:', session.messages.length)
+        logDebug('【IPC Handler】chatSession:get success, session:', session)
         return response
       } catch (error) {
         const response = responseError(error)

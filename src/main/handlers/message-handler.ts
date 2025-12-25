@@ -20,7 +20,7 @@ import {
   listAttachmentsByMessageIds
 } from '@/main/repository/attachment'
 import { chatSessionExists } from '@/main/repository/chat-session'
-import { logError, logInfo } from '@/main/utils'
+import { logDebug, logError, logInfo } from '@/main/utils'
 
 /**
  * Message Handler
@@ -204,6 +204,7 @@ export class MessageHandler {
 
         const response = responseSuccess(messagesWithAttachments)
         logInfo('【IPC Handler】message:list success, count:', messages.length)
+        logDebug('【IPC Handler】message:list success, messages:', response)
         return response
       } catch (error) {
         const response = responseError(error)
