@@ -24,12 +24,22 @@ export interface ChatSession {
 export interface Message {
   id: bigint
   sessionId: bigint
-  role: 'user' | 'assistant' | 'system'
+  role: 'user' | 'assistant' | 'system' | 'tool'
   content: string
   attachments?: Attachment[]  // 附件列表
   status: 'sent' | 'pending' | 'error' | null
   totalTokens: number | null
   createdAt: string
+  
+  // 工具调用相关字段
+  contentType?: 'text' | 'tool_call'
+  toolCall?: {
+    itemId: string
+    type: 'web_search' | 'file_search'
+    status: 'in_progress' | 'searching' | 'completed' | 'failed'
+    query?: string
+    outputIndex?: number
+  }
 }
 
 interface ChatState {
@@ -64,9 +74,28 @@ interface ChatState {
   // Actions - 消息管理
   addMessage: (
     sessionId: bigint,
-    message: { role: 'user' | 'assistant' | 'system'; content: string; attachments?: Attachment[]; status?: 'sent' | 'pending' | 'error' }
+    message: { 
+      role: 'user' | 'assistant' | 'system' | 'tool'
+      content: string
+      attachments?: Attachment[]
+      status?: 'sent' | 'pending' | 'error'
+      contentType?: 'text' | 'tool_call'
+      toolCall?: {
+        itemId: string
+        type: 'web_search' | 'file_search'
+        status: 'in_progress' | 'searching' | 'completed' | 'failed'
+        query?: string
+        outputIndex?: number
+      }
+    }
   ) => Promise<Message | null>
-  updateMessage: (id: bigint, data: { content?: string; status?: 'sent' | 'pending' | 'error'; totalTokens?: number }) => Promise<void>
+  updateMessage: (id: bigint, data: { 
+    content?: string
+    status?: 'sent' | 'pending' | 'error'
+    totalTokens?: number
+    toolStatus?: 'in_progress' | 'searching' | 'completed' | 'failed'
+    toolQuery?: string
+  }) => Promise<void>
   appendToMessage: (id: bigint, content: string) => Promise<void>
 
   // Actions - 本地状态
@@ -234,7 +263,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
           role: message.role,
           content: message.content,
           attachments: message.attachments,
-          status: message.status || 'sent'
+          status: message.status || 'sent',
+          contentType: message.contentType,
+          toolCall: message.toolCall
         }
       )) as IPCResponse<SerializedMessage>
 

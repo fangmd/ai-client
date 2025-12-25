@@ -25,7 +25,14 @@ export async function createMessage(data: CreateMessageData): Promise<DbMessage>
         role: data.role,
         content: data.content,
         status: data.status ?? 'sent',
-        totalTokens: data.totalTokens
+        totalTokens: data.totalTokens,
+        // 工具调用相关字段
+        contentType: data.contentType,
+        toolType: data.toolType,
+        toolStatus: data.toolStatus,
+        toolItemId: data.toolItemId,
+        toolOutputIndex: data.toolOutputIndex,
+        toolQuery: data.toolQuery
       }
     })
 
@@ -58,7 +65,10 @@ export async function updateMessage(id: bigint, data: UpdateMessageData): Promis
     data: {
       content: data.content,
       status: data.status,
-      totalTokens: data.totalTokens
+      totalTokens: data.totalTokens,
+      // 工具调用相关字段
+      toolStatus: data.toolStatus,
+      toolQuery: data.toolQuery
     }
   })
 }
@@ -150,5 +160,17 @@ function generateTitleFromContent(content: string): string {
 export async function getMessageById(id: bigint): Promise<DbMessage | null> {
   return prisma.message.findUnique({
     where: { id }
+  })
+}
+
+/**
+ * 根据 toolItemId 查询工具调用消息
+ */
+export async function getMessageByToolItemId(toolItemId: string): Promise<DbMessage | null> {
+  return prisma.message.findFirst({
+    where: {
+      toolItemId,
+      contentType: 'tool_call'
+    }
   })
 }

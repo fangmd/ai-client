@@ -177,7 +177,9 @@ export const Chat: React.FC = () => {
         ? ('sending' as const)
         : msg.status === 'error'
           ? ('error' as const)
-          : ('done' as const)
+          : ('done' as const),
+    contentType: msg.contentType,
+    toolCall: msg.toolCall
   }))
 
   return (

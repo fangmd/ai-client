@@ -1,10 +1,25 @@
-import type { Message, AIConfig } from '@/types/chat-type'
+import type { Message, AIConfig, ToolCallInfo } from '@/types/chat-type'
 import { OpenAIProvider } from './openai-provider'
 
 /**
  * 工具类型
  */
 export type ToolType = 'web_search' | 'file_search'
+
+/**
+ * 流式聊天回调接口
+ */
+export interface StreamCallbacks {
+  onChunk: (chunk: string) => void
+  
+  // 工具调用回调
+  onToolCallStart?: (toolInfo: ToolCallInfo) => void      // 工具调用开始
+  onToolCallProgress?: (toolInfo: ToolCallInfo) => void   // 工具调用进度
+  onToolCallComplete?: (toolInfo: ToolCallInfo) => void   // 工具调用完成
+  
+  onDone: () => void
+  onError: (error: Error) => void
+}
 
 /**
  * AI Provider 接口
@@ -22,11 +37,7 @@ export interface AIProvider {
   streamChat(
     messages: Omit<Message, 'id' | 'timestamp'>[],
     config: AIConfig,
-    callbacks: {
-      onChunk: (chunk: string) => void
-      onDone: () => void
-      onError: (error: Error) => void
-    },
+    callbacks: StreamCallbacks,
     abortSignal?: AbortSignal,
     options?: {
       tools?: ToolType[]

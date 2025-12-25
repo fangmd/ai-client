@@ -7,6 +7,7 @@ import { Button } from '@renderer/components/ui/button'
 import copy from 'copy-to-clipboard'
 import { useState } from 'react'
 import { Message } from '@renderer/types/chat'
+import { ToolCallItem } from './tool-call-item'
 
 interface Props {
   message: Message
@@ -14,6 +15,12 @@ interface Props {
 
 export const MessageItem: React.FC<Props> = ({ message }) => {
   const [isCopied, setIsCopied] = useState(false)
+  
+  // 工具调用消息
+  if (message.contentType === 'tool_call') {
+    return <ToolCallItem message={message} />
+  }
+  
   if (message.role === 'assistant') {
     return (
       <div className={clsx('markdown-body', 'pb-[20px] w-full')} key={message.id}>

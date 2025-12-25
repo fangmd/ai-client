@@ -3,8 +3,8 @@ import type {
   ChatCompletionContentPart,
   ChatCompletionMessageParam
 } from 'openai/resources/chat/completions'
-import type { Message, AIConfig } from '@/types/chat-type'
-import type { AIProvider, ToolType } from './index'
+import type { Message, AIConfig, ToolCallInfo } from '@/types/chat-type'
+import type { AIProvider, ToolType, StreamCallbacks } from './index'
 import { logInfo, logError, logDebug, logWarn } from '../utils/logger'
 import {
   ResponseCreateParamsStreaming,
@@ -52,11 +52,7 @@ export class OpenAIProvider implements AIProvider {
   async streamChat(
     messages: Omit<Message, 'id' | 'timestamp'>[],
     config: AIConfig,
-    callbacks: {
-      onChunk: (chunk: string) => void
-      onDone: () => void
-      onError: (error: Error) => void
-    },
+    callbacks: StreamCallbacks,
     abortSignal?: AbortSignal,
     options?: {
       tools?: ToolType[]
@@ -128,11 +124,7 @@ export class OpenAIProvider implements AIProvider {
   private async streamChatWithCompletionsAPI(
     messages: Omit<Message, 'id' | 'timestamp'>[],
     config: AIConfig,
-    callbacks: {
-      onChunk: (chunk: string) => void
-      onDone: () => void
-      onError: (error: Error) => void
-    },
+    callbacks: StreamCallbacks,
     abortSignal?: AbortSignal
   ): Promise<void> {
     try {
@@ -244,11 +236,7 @@ export class OpenAIProvider implements AIProvider {
   private async streamChatWithResponsesAPI(
     messages: Omit<Message, 'id' | 'timestamp'>[],
     config: AIConfig,
-    callbacks: {
-      onChunk: (chunk: string) => void
-      onDone: () => void
-      onError: (error: Error) => void
-    },
+    callbacks: StreamCallbacks,
     abortSignal?: AbortSignal,
     tools: ToolType[] = []
   ): Promise<void> {
@@ -353,6 +341,9 @@ export class OpenAIProvider implements AIProvider {
 
       logDebug('Responses API stream connection established, starting to process chunks')
       let chunkCount = 0
+      
+      // 用于跟踪工具调用状态
+      const toolCallsMap = new Map<string, ToolCallInfo>()
 
       // 处理流式响应
       for await (const chunk of stream) {
@@ -363,39 +354,131 @@ export class OpenAIProvider implements AIProvider {
         }
 
         // Responses API 使用不同的事件类型
-        // 主要处理文本增量事件： ResponseTextDeltaEvent
         const chunkType = (chunk as any).type
-        if (chunkType === 'response.output_text.delta') {
-          const textDeltaEvent = chunk as ResponseTextDeltaEvent
-          if (textDeltaEvent.delta) {
-            chunkCount++
-            callbacks.onChunk(textDeltaEvent.delta)
+
+        switch (chunkType) {
+          // 1. 工具调用开始
+          case 'response.output_item.added': {
+            const event = chunk as any
+            if (event.item?.type === 'web_search_call') {
+              const toolInfo: ToolCallInfo = {
+                itemId: event.item.id,
+                type: 'web_search',
+                status: 'in_progress',
+                outputIndex: event.output_index,
+                timestamp: Date.now()
+              }
+              toolCallsMap.set(event.item.id, toolInfo)
+              callbacks.onToolCallStart?.(toolInfo)
+              
+              logDebug('Tool call started', toolInfo)
+            } else if (event.item?.type === 'file_search_call') {
+              const toolInfo: ToolCallInfo = {
+                itemId: event.item.id,
+                type: 'file_search',
+                status: 'in_progress',
+                outputIndex: event.output_index,
+                timestamp: Date.now()
+              }
+              toolCallsMap.set(event.item.id, toolInfo)
+              callbacks.onToolCallStart?.(toolInfo)
+              
+              logDebug('Tool call started', toolInfo)
+            }
+            break
+          }
+
+          // 2. 工具调用进行中
+          case 'response.web_search_call.in_progress': {
+            const event = chunk as any
+            const toolInfo = toolCallsMap.get(event.item_id)
+            if (toolInfo) {
+              toolInfo.status = 'in_progress'
+              callbacks.onToolCallProgress?.(toolInfo)
+              
+              logDebug('Tool call in progress', toolInfo)
+            }
+            break
+          }
+
+          // 3. 工具调用搜索中
+          case 'response.web_search_call.searching': {
+            const event = chunk as any
+            const toolInfo = toolCallsMap.get(event.item_id)
+            if (toolInfo) {
+              toolInfo.status = 'searching'
+              callbacks.onToolCallProgress?.(toolInfo)
+              
+              logDebug('Tool call searching', toolInfo)
+            }
+            break
+          }
+
+          // 4. 工具调用完成（初步）
+          case 'response.web_search_call.completed': {
+            const event = chunk as any
+            const toolInfo = toolCallsMap.get(event.item_id)
+            if (toolInfo) {
+              toolInfo.status = 'completed'
+              // 暂不调用 onToolCallComplete，等待 output_item.done 获取完整信息
+              logDebug('Tool call completed (waiting for details)', toolInfo)
+            }
+            break
+          }
+
+          // 5. 输出项完成 - 获取工具调用的完整信息
+          case 'response.output_item.done': {
+            const event = chunk as any
+            if (event.item?.type === 'web_search_call' || event.item?.type === 'file_search_call') {
+              const toolInfo = toolCallsMap.get(event.item.id)
+              if (toolInfo) {
+                toolInfo.status = 'completed'
+                toolInfo.query = event.item.action?.query
+                callbacks.onToolCallComplete?.(toolInfo)
+                
+                logInfo('Tool call completed with details', toolInfo)
+              }
+            }
+            break
+          }
+
+          // 6. 文本增量
+          case 'response.output_text.delta': {
+            const textDeltaEvent = chunk as ResponseTextDeltaEvent
+            if (textDeltaEvent.delta) {
+              chunkCount++
+              callbacks.onChunk(textDeltaEvent.delta)
+            }
+            break
+          }
+
+          // 7. 内容部分添加
+          case 'response.content_part.added': {
+            const contentPartEvent = chunk as ResponseContentPartAddedEvent
+            const part = contentPartEvent.part
+            if (part.type === 'output_text' && 'text' in part && part.text) {
+              chunkCount++
+              callbacks.onChunk(part.text)
+            }
+            break
+          }
+
+          // 8. 响应完成
+          case 'response.completed': {
+            const event = chunk as any
+            logInfo('Response completed', {
+              totalOutputItems: event.response?.output?.length,
+              usage: event.response?.usage
+            })
+            break
           }
         }
-        // 处理内容部分添加事件：ResponseContentPartAddedEvent（用于完整文本块）
-        // 作为处理非流失输出的内容
-        else if (chunkType === 'response.content_part.added') {
-          logDebug('OpenAI Responses API stream chat chunk received', {
-            chunk: chunk
-          })
-
-          const contentPartEvent = chunk as ResponseContentPartAddedEvent
-          const part = contentPartEvent.part
-          if (part.type === 'output_text' && 'text' in part) {
-            chunkCount++
-            callbacks.onChunk(part.text)
-          }
-        }
-
-        // response.completed
-
-        // 处理工具调用结果（如果需要）
-        // TODO: 处理 web_search 和 file_search 的结果
       }
 
       logInfo('OpenAI Responses API stream chat completed successfully', {
         model: config.model,
-        totalChunks: chunkCount
+        totalChunks: chunkCount,
+        totalToolCalls: toolCallsMap.size
       })
       callbacks.onDone()
     } catch (error) {

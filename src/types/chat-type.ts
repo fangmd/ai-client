@@ -3,12 +3,39 @@
 /**
  * 消息角色类型
  */
-export type MessageRole = 'user' | 'assistant' | 'system'
+export type MessageRole = 'user' | 'assistant' | 'system' | 'tool'
 
 /**
  * 消息状态类型（前端）
  */
 export type MessageStatus = 'sending' | 'done' | 'error'
+
+/**
+ * 消息内容类型
+ */
+export type MessageContentType = 'text' | 'tool_call'
+
+/**
+ * 工具类型
+ */
+export type ToolType = 'web_search' | 'file_search'
+
+/**
+ * 工具调用状态
+ */
+export type ToolCallStatus = 'in_progress' | 'searching' | 'completed' | 'failed'
+
+/**
+ * 工具调用信息
+ */
+export interface ToolCallInfo {
+  itemId: string          // 工具调用的唯一标识
+  type: ToolType          // 工具类型
+  status: ToolCallStatus  // 当前状态
+  query?: string          // 搜索查询内容（完成时才有）
+  outputIndex?: number    // 在输出中的索引位置
+  timestamp?: number      // 时间戳
+}
 
 /**
  * 附件类型
@@ -37,6 +64,10 @@ export interface Message {
   timestamp: number
   status?: MessageStatus
   attachments?: Attachment[]  // 附件列表
+  
+  // 工具调用相关字段
+  contentType?: MessageContentType  // 内容类型，默认 'text'
+  toolCall?: ToolCallInfo          // 工具调用信息（仅当 contentType 为 'tool_call' 时）
 }
 
 /**
@@ -85,6 +116,14 @@ export type DbMessage = {
   status: string | null
   totalTokens: number | null
   createdAt: Date
+  
+  // 工具调用相关字段
+  contentType: string | null
+  toolType: string | null
+  toolStatus: string | null
+  toolQuery: string | null
+  toolItemId: string | null
+  toolOutputIndex: number | null
 }
 
 /**
@@ -110,6 +149,14 @@ export type CreateMessageData = {
   content: string
   status?: DbMessageStatus
   totalTokens?: number
+  
+  // 工具调用相关字段
+  contentType?: MessageContentType
+  toolType?: ToolType
+  toolStatus?: ToolCallStatus
+  toolItemId?: string
+  toolOutputIndex?: number
+  toolQuery?: string
 }
 
 /**
@@ -131,6 +178,10 @@ export type UpdateMessageData = {
   content?: string
   status?: DbMessageStatus
   totalTokens?: number
+  
+  // 工具调用相关字段
+  toolStatus?: ToolCallStatus
+  toolQuery?: string
 }
 
 /**

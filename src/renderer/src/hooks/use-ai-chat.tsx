@@ -186,6 +186,60 @@ export const useAIChat = ({ config, defaultProviderId }: UseAIChatOptions) => {
     )
     unsubscribeRefs.current.push(unsubscribeChunk)
 
+    // 监听工具调用开始
+    const unsubscribeToolCallStart = window.electron.ipcRenderer.on(
+      IPC_CHANNELS.ai.toolCallStart,
+      (_event, data: { requestId: string; messageId: string; message: any }) => {
+        if (data.requestId === requestId && data.message) {
+          // 工具调用消息已经在后端创建，这里直接添加到本地状态
+          const toolMessage = {
+            ...data.message,
+            id: BigInt(data.messageId),
+            sessionId
+          }
+          // 使用 addLocalMessage 避免重复创建数据库记录
+          const { addLocalMessage } = useChatStore.getState()
+          addLocalMessage(toolMessage)
+        }
+      }
+    )
+    unsubscribeRefs.current.push(unsubscribeToolCallStart)
+
+    // 监听工具调用进度
+    const unsubscribeToolCallProgress = window.electron.ipcRenderer.on(
+      IPC_CHANNELS.ai.toolCallProgress,
+      (_event, data: { requestId: string; messageId: string; message: any }) => {
+        if (data.requestId === requestId && data.message) {
+          // 更新本地消息状态
+          const messageId = BigInt(data.messageId)
+          const { updateLocalMessage } = useChatStore.getState()
+          updateLocalMessage(messageId, {
+            content: data.message.content,
+            toolCall: data.message.toolCall
+          })
+        }
+      }
+    )
+    unsubscribeRefs.current.push(unsubscribeToolCallProgress)
+
+    // 监听工具调用完成
+    const unsubscribeToolCallComplete = window.electron.ipcRenderer.on(
+      IPC_CHANNELS.ai.toolCallComplete,
+      (_event, data: { requestId: string; messageId: string; message: any }) => {
+        if (data.requestId === requestId && data.message) {
+          // 更新本地消息状态
+          const messageId = BigInt(data.messageId)
+          const { updateLocalMessage } = useChatStore.getState()
+          updateLocalMessage(messageId, {
+            content: data.message.content,
+            status: 'sent',
+            toolCall: data.message.toolCall
+          })
+        }
+      }
+    )
+    unsubscribeRefs.current.push(unsubscribeToolCallComplete)
+
     // 监听完成事件
     const unsubscribeDone = window.electron.ipcRenderer.on(
       IPC_CHANNELS.ai.streamDone,
@@ -241,7 +295,8 @@ export const useAIChat = ({ config, defaultProviderId }: UseAIChatOptions) => {
     window.electron.ipcRenderer.send(IPC_CHANNELS.ai.streamChat, {
       messages: messageList,
       config,
-      requestId
+      requestId,
+      sessionId
     })
   }
 

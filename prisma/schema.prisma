@@ -45,14 +45,24 @@ model ChatSession {
 model Message {
   id          BigInt   @id
   sessionId   BigInt // 所属会话 ID（逻辑外键）
-  role        String // 角色: user, assistant, system
+  role        String // 角色: user, assistant, system, tool
   content     String // 消息内容
   status      String? // 状态: sent(已发送), pending(发送中), error(错误)
   totalTokens Int? // Token 总数（可选）
   createdAt   DateTime @default(now())
 
+  // 工具调用相关字段
+  contentType     String? @default("text") // 内容类型: text, tool_call
+  toolType        String? // 工具类型: web_search, file_search
+  toolStatus      String? // 工具状态: in_progress, searching, completed, failed
+  toolQuery       String? // 工具查询内容
+  toolItemId      String? // 工具调用的 item_id
+  toolOutputIndex Int? // 工具在输出中的索引
+
   @@index([sessionId])
   @@index([createdAt])
+  @@index([contentType])
+  @@index([toolItemId])
   @@map("message")
 }
 

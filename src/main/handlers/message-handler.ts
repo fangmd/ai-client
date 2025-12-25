@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron'
 import { IPC_CHANNELS } from '@/common/constants'
 import { responseSuccess, responseError } from '@/common/response'
-import type { CreateMessageData, UpdateMessageData, MessageRole, DbMessageStatus, Attachment } from '@/types'
+import type { CreateMessageData, UpdateMessageData, MessageRole, DbMessageStatus, Attachment, MessageContentType, ToolType, ToolCallStatus } from '@/types'
 import {
   createMessage,
   updateMessage,
@@ -36,6 +36,14 @@ export class MessageHandler {
           attachments?: Attachment[]
           status?: DbMessageStatus
           totalTokens?: number
+          contentType?: MessageContentType
+          toolCall?: {
+            itemId: string
+            type: ToolType
+            status: ToolCallStatus
+            query?: string
+            outputIndex?: number
+          }
         }
       ) => {
         logInfo('【IPC Handler】message:create called, params:', {
@@ -60,7 +68,13 @@ export class MessageHandler {
             role: data.role,
             content: data.content,
             status: data.status,
-            totalTokens: data.totalTokens
+            totalTokens: data.totalTokens,
+            contentType: data.contentType,
+            toolType: data.toolCall?.type,
+            toolStatus: data.toolCall?.status,
+            toolItemId: data.toolCall?.itemId,
+            toolOutputIndex: data.toolCall?.outputIndex,
+            toolQuery: data.toolCall?.query
           }
 
           // 创建消息
@@ -89,10 +103,23 @@ export class MessageHandler {
           }
 
           // 返回消息和附件
-          const response = responseSuccess({
+          const responseData: any = {
             ...message,
             attachments
-          })
+          }
+          
+          // 如果是工具调用消息，添加 toolCall 字段
+          if (message.contentType === 'tool_call') {
+            responseData.toolCall = {
+              itemId: message.toolItemId,
+              type: message.toolType,
+              status: message.toolStatus,
+              query: message.toolQuery,
+              outputIndex: message.toolOutputIndex
+            }
+          }
+          
+          const response = responseSuccess(responseData)
           logInfo('【IPC Handler】message:create success, response:', response)
           return response
         } catch (error) {
@@ -166,10 +193,24 @@ export class MessageHandler {
                   data: a.data
                 }))
               : undefined
-          return {
+          
+          const result: any = {
             ...msg,
             attachments
           }
+          
+          // 如果是工具调用消息，添加 toolCall 字段
+          if (msg.contentType === 'tool_call') {
+            result.toolCall = {
+              itemId: msg.toolItemId,
+              type: msg.toolType,
+              status: msg.toolStatus,
+              query: msg.toolQuery,
+              outputIndex: msg.toolOutputIndex
+            }
+          }
+          
+          return result
         })
 
         const response = responseSuccess(messagesWithAttachments)
