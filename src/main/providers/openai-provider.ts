@@ -140,7 +140,10 @@ export class OpenAIProvider implements AIProvider {
       })
 
       // 转换消息格式（支持 Vision API）
-      const openaiMessages: ChatCompletionMessageParam[] = messages.map((msg) => {
+      // 过滤掉 role 为 'tool' 的消息，这些消息不应该传给 AI
+      const openaiMessages: ChatCompletionMessageParam[] = messages
+        .filter((msg) => msg.role !== 'tool')
+        .map((msg) => {
         const hasImageAttachments = msg.attachments?.some((a) => a.type === 'image')
 
         // 有图片附件时，使用 Vision 格式（只有 user 角色支持多模态内容）
@@ -253,7 +256,10 @@ export class OpenAIProvider implements AIProvider {
       })
 
       // 转换消息格式（支持 Vision API）
-      const openaiMessages: ChatCompletionMessageParam[] = messages.map((msg) => {
+      // 过滤掉 role 为 'tool' 的消息，这些消息不应该传给 AI
+      const openaiMessages: ChatCompletionMessageParam[] = messages
+        .filter((msg) => msg.role !== 'tool')
+        .map((msg) => {
         const hasImageAttachments = msg.attachments?.some((a) => a.type === 'image')
 
         // 有图片附件时，使用 Vision 格式（只有 user 角色支持多模态内容）
