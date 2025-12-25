@@ -1,7 +1,13 @@
 import { ipcMain } from 'electron'
 import { IPC_CHANNELS } from '@/common/constants'
 import { responseSuccess, responseError } from '@/common/response'
-import type { CreateAiProviderData, UpdateAiProviderData } from '@/types'
+import type {
+  CreateAiProviderData,
+  UpdateAiProviderData,
+  UpdateAiProviderRequest,
+  DeleteAiProviderRequest,
+  SetDefaultAiProviderRequest
+} from '@/types'
 import {
   createAiProvider,
   getAllAiProviders,
@@ -80,7 +86,8 @@ export class AIProviderHandler {
     // 更新 AI Provider
     ipcMain.handle(
       IPC_CHANNELS.aiProvider.update,
-      async (_event, { id, data }: { id: bigint; data: UpdateAiProviderData }) => {
+      async (_event, request: UpdateAiProviderRequest) => {
+        const { id, data } = request
         logInfo('【IPC Handler】aiProvider:update called, id:', id, 'data:', data)
         try {
           const provider = await updateAiProvider(id, data)
@@ -103,6 +110,8 @@ export class AIProviderHandler {
 
     // 删除 AI Provider
     ipcMain.handle(IPC_CHANNELS.aiProvider.delete, async (_event, id: bigint) => {
+      // 注意：这里保持 id: bigint 因为 IPC 通道定义就是直接传 id
+      // 如果需要统一，可以改为 DeleteAiProviderRequest，但需要修改调用方
       logInfo('【IPC Handler】aiProvider:delete called, id:', id)
       try {
         await deleteAiProvider(id)
@@ -118,6 +127,8 @@ export class AIProviderHandler {
 
     // 设置默认 AI Provider
     ipcMain.handle(IPC_CHANNELS.aiProvider.setDefault, async (_event, id: bigint) => {
+      // 注意：这里保持 id: bigint 因为 IPC 通道定义就是直接传 id
+      // 如果需要统一，可以改为 SetDefaultAiProviderRequest，但需要修改调用方
       logInfo('【IPC Handler】aiProvider:setDefault called, id:', id)
       try {
         const provider = await setDefaultAiProvider(id)

@@ -1,7 +1,15 @@
 import { ipcMain } from 'electron'
 import { IPC_CHANNELS } from '@/common/constants'
 import { responseSuccess, responseError } from '@/common/response'
-import type { CreateChatSessionData, UpdateChatSessionData } from '@/types'
+import type {
+  CreateChatSessionData,
+  UpdateChatSessionData,
+  CreateChatSessionRequest,
+  ListChatSessionsRequest,
+  GetChatSessionRequest,
+  UpdateChatSessionRequest,
+  DeleteChatSessionRequest
+} from '@/types'
 import {
   createChatSession,
   listChatSessions,
@@ -24,7 +32,7 @@ export class ChatSessionHandler {
     // 创建对话会话
     ipcMain.handle(
       IPC_CHANNELS.chatSession.create,
-      async (_event, data: { title?: string; aiProviderId: bigint }) => {
+      async (_event, data: CreateChatSessionRequest) => {
         logInfo('【IPC Handler】chatSession:create called, params:', data)
         try {
           // 验证 aiProviderId 的有效性
@@ -55,7 +63,7 @@ export class ChatSessionHandler {
     // 查询对话列表
     ipcMain.handle(
       IPC_CHANNELS.chatSession.list,
-      async (_event, options?: { limit?: number; offset?: number }) => {
+      async (_event, options?: ListChatSessionsRequest) => {
         logInfo('【IPC Handler】chatSession:list called, params:', options)
         try {
           const sessions = await listChatSessions(options)
@@ -71,7 +79,7 @@ export class ChatSessionHandler {
     )
 
     // 查询单个对话（包含消息）
-    ipcMain.handle(IPC_CHANNELS.chatSession.get, async (_event, data: { id: bigint }) => {
+    ipcMain.handle(IPC_CHANNELS.chatSession.get, async (_event, data: GetChatSessionRequest) => {
       logInfo('【IPC Handler】chatSession:get called, params:', data)
       try {
         const session = await getChatSessionById(data.id)
@@ -95,7 +103,7 @@ export class ChatSessionHandler {
     // 更新对话
     ipcMain.handle(
       IPC_CHANNELS.chatSession.update,
-      async (_event, data: { id: bigint; data: UpdateChatSessionData }) => {
+      async (_event, data: UpdateChatSessionRequest) => {
         logInfo('【IPC Handler】chatSession:update called, params:', data)
         try {
           const session = await updateChatSession(data.id, data.data)
@@ -111,7 +119,7 @@ export class ChatSessionHandler {
     )
 
     // 删除对话
-    ipcMain.handle(IPC_CHANNELS.chatSession.delete, async (_event, data: { id: bigint }) => {
+    ipcMain.handle(IPC_CHANNELS.chatSession.delete, async (_event, data: DeleteChatSessionRequest) => {
       logInfo('【IPC Handler】chatSession:delete called, params:', data)
       try {
         await deleteChatSession(data.id)

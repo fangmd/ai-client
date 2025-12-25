@@ -27,3 +27,27 @@ export const DEFAULT_CONFIG = {
   [CONFIG_KEYS.THEME]: 'system' as ThemeMode
 } as const
 
+// ==================== IPC 请求参数类型 ====================
+
+/**
+ * 获取配置请求参数
+ */
+export interface GetConfigRequest {
+  key: string
+}
+
+/**
+ * 设置配置请求参数
+ */
+export interface SetConfigRequest {
+  key: string
+  value: string
+}
+
+/**
+ * 删除配置请求参数
+ */
+export interface DeleteConfigRequest {
+  key: string
+}
+

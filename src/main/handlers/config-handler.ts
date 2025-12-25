@@ -3,6 +3,7 @@ import { IPC_CHANNELS } from '@/common/constants'
 import { responseSuccess, responseError } from '@/common/response'
 import { getConfig, getAllConfigs, setConfig, deleteConfig } from '@/main/repository/config'
 import { logError, logInfo } from '@/main/utils'
+import type { GetConfigRequest, SetConfigRequest, DeleteConfigRequest } from '@/types'
 
 /**
  * Config Handler
@@ -15,6 +16,8 @@ export class ConfigHandler {
   static register(): void {
     // 获取单个配置
     ipcMain.handle(IPC_CHANNELS.config.get, async (_event, key: string) => {
+      // 注意：这里保持 key: string 因为 IPC 通道定义就是直接传 key
+      // 如果需要统一，可以改为 GetConfigRequest，但需要修改调用方
       logInfo('【IPC Handler】config:get called, key:', key)
       try {
         const config = await getConfig(key)
@@ -46,7 +49,7 @@ export class ConfigHandler {
     // 设置配置
     ipcMain.handle(
       IPC_CHANNELS.config.set,
-      async (_event, data: { key: string; value: string }) => {
+      async (_event, data: SetConfigRequest) => {
         logInfo('【IPC Handler】config:set called, key:', data.key, 'value:', data.value)
         try {
           const config = await setConfig(data.key, data.value)

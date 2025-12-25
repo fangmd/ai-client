@@ -210,3 +210,104 @@ export type UpdateChatSessionData = {
   title?: string
   aiProviderId?: bigint
 }
+
+// ==================== IPC 请求参数类型 ====================
+
+/**
+ * AI 流式聊天请求参数
+ */
+export interface StreamChatRequest {
+  messages: Omit<Message, 'id' | 'timestamp'>[]
+  config: AIConfig
+  requestId: string
+  sessionId: bigint
+  tools?: ToolType[]
+}
+
+/**
+ * AI 取消聊天请求参数
+ */
+export interface CancelChatRequest {
+  requestId: string
+}
+
+/**
+ * 创建消息请求参数
+ */
+export interface CreateMessageRequest {
+  sessionId: bigint
+  role: MessageRole
+  content: string
+  attachments?: Attachment[]
+  status?: DbMessageStatus
+  totalTokens?: number
+  contentType?: MessageContentType
+  toolCall?: {
+    itemId: string
+    type: ToolType
+    status: ToolCallStatus
+    query?: string
+    outputIndex?: number
+  }
+}
+
+/**
+ * 更新消息请求参数
+ */
+export interface UpdateMessageRequest {
+  id: bigint
+  data: UpdateMessageData
+}
+
+/**
+ * 追加消息内容请求参数
+ */
+export interface AppendMessageRequest {
+  id: bigint
+  content: string
+}
+
+/**
+ * 查询消息列表请求参数
+ */
+export interface ListMessagesRequest {
+  sessionId: bigint
+}
+
+/**
+ * 创建聊天会话请求参数
+ */
+export interface CreateChatSessionRequest {
+  title?: string
+  aiProviderId: bigint
+}
+
+/**
+ * 查询聊天会话列表请求参数
+ */
+export interface ListChatSessionsRequest {
+  limit?: number
+  offset?: number
+}
+
+/**
+ * 查询单个聊天会话请求参数
+ */
+export interface GetChatSessionRequest {
+  id: bigint
+}
+
+/**
+ * 更新聊天会话请求参数
+ */
+export interface UpdateChatSessionRequest {
+  id: bigint
+  data: UpdateChatSessionData
+}
+
+/**
+ * 删除聊天会话请求参数
+ */
+export interface DeleteChatSessionRequest {
+  id: bigint
+}

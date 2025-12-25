@@ -3,7 +3,7 @@ import { IPC_CHANNELS } from '@/common/constants'
 import { responseSuccess, responseError } from '@/common/response'
 import { AIProviderFactory } from '@/main/providers'
 import { logInfo, logError, logDebug } from '@/main/utils'
-import type { Message, AIConfig, ToolCallInfo } from '@/types'
+import type { Message, ToolCallInfo, StreamChatRequest, CancelChatRequest } from '@/types'
 import { createMessage, updateMessage } from '@/main/repository/message'
 
 /**
@@ -21,14 +21,8 @@ export class AIHandler {
    */
   static register(): void {
     // 流式聊天请求处理
-    ipcMain.on(IPC_CHANNELS.ai.streamChat, async (event, request) => {
-      const { messages, config, requestId, tools, sessionId } = request as {
-        messages: Omit<Message, 'id' | 'timestamp'>[]
-        config: AIConfig
-        requestId: string
-        sessionId: bigint
-        tools?: Array<'web_search' | 'file_search'>
-      }
+    ipcMain.on(IPC_CHANNELS.ai.streamChat, async (event, request: StreamChatRequest) => {
+      const { messages, config, requestId, tools, sessionId } = request
 
       logInfo('【IPC Handler】ai:streamChat called, params:', {
         requestId,
@@ -200,8 +194,8 @@ export class AIHandler {
     })
 
     // 取消聊天请求处理
-    ipcMain.on(IPC_CHANNELS.ai.cancelChat, (event, request) => {
-      const { requestId } = request as { requestId: string }
+    ipcMain.on(IPC_CHANNELS.ai.cancelChat, (event, request: CancelChatRequest) => {
+      const { requestId } = request
       logInfo('【IPC Handler】ai:cancelChat called, params:', { requestId })
 
       const abortController = activeRequests.get(requestId)

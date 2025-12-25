@@ -1,7 +1,20 @@
 import { ipcMain } from 'electron'
 import { IPC_CHANNELS } from '@/common/constants'
 import { responseSuccess, responseError } from '@/common/response'
-import type { CreateMessageData, UpdateMessageData, MessageRole, DbMessageStatus, Attachment, MessageContentType, ToolType, ToolCallStatus } from '@/types'
+import type {
+  CreateMessageData,
+  UpdateMessageData,
+  MessageRole,
+  DbMessageStatus,
+  Attachment,
+  MessageContentType,
+  ToolType,
+  ToolCallStatus,
+  CreateMessageRequest,
+  UpdateMessageRequest,
+  AppendMessageRequest,
+  ListMessagesRequest
+} from '@/types'
 import {
   createMessage,
   updateMessage,
@@ -27,25 +40,7 @@ export class MessageHandler {
     // 创建消息
     ipcMain.handle(
       IPC_CHANNELS.message.create,
-      async (
-        _event,
-        data: {
-          sessionId: bigint
-          role: MessageRole
-          content: string
-          attachments?: Attachment[]
-          status?: DbMessageStatus
-          totalTokens?: number
-          contentType?: MessageContentType
-          toolCall?: {
-            itemId: string
-            type: ToolType
-            status: ToolCallStatus
-            query?: string
-            outputIndex?: number
-          }
-        }
-      ) => {
+      async (_event, data: CreateMessageRequest) => {
         logInfo('【IPC Handler】message:create called, params:', {
           sessionId: data.sessionId,
           role: data.role,
@@ -133,7 +128,7 @@ export class MessageHandler {
     // 更新消息
     ipcMain.handle(
       IPC_CHANNELS.message.update,
-      async (_event, data: { id: bigint; data: UpdateMessageData }) => {
+      async (_event, data: UpdateMessageRequest) => {
         logInfo('【IPC Handler】message:update called, params:', data)
         try {
           const message = await updateMessage(data.id, data.data)
@@ -151,7 +146,7 @@ export class MessageHandler {
     // 追加消息内容（用于流式响应）
     ipcMain.handle(
       IPC_CHANNELS.message.append,
-      async (_event, data: { id: bigint; content: string }) => {
+      async (_event, data: AppendMessageRequest) => {
         logInfo('【IPC Handler】message:append called, params:', {
           id: data.id,
           contentLength: data.content.length
@@ -170,7 +165,7 @@ export class MessageHandler {
     )
 
     // 查询会话的所有消息
-    ipcMain.handle(IPC_CHANNELS.message.list, async (_event, data: { sessionId: bigint }) => {
+    ipcMain.handle(IPC_CHANNELS.message.list, async (_event, data: ListMessagesRequest) => {
       logInfo('【IPC Handler】message:list called, params:', data)
       try {
         const messages = await listMessages(data.sessionId)

@@ -39,3 +39,27 @@ export interface CreateAiProviderData {
  * AI Provider 更新数据（基于 Prisma 类型）
  */
 export type UpdateAiProviderData = Prisma.AiProviderUpdateInput
+
+// ==================== IPC 请求参数类型 ====================
+
+/**
+ * 更新 AI Provider 请求参数
+ */
+export interface UpdateAiProviderRequest {
+  id: bigint
+  data: UpdateAiProviderData
+}
+
+/**
+ * 删除 AI Provider 请求参数
+ */
+export interface DeleteAiProviderRequest {
+  id: bigint
+}
+
+/**
+ * 设置默认 AI Provider 请求参数
+ */
+export interface SetDefaultAiProviderRequest {
+  id: bigint
+}

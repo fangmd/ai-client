@@ -1,0 +1,296 @@
+---
+description: UI 开发规范，包括样式规范、组件使用规范、设计系统等 UI 相关的最佳实践
+globs: 
+alwaysApply: true
+---
+# UI 开发规范
+
+## 样式规范
+
+### CSS 框架
+
+#### Tailwind CSS（必须遵守）
+
+- **必须使用 Tailwind CSS 进行样式开发**
+- 禁止使用内联样式（`style` 属性）
+- 禁止创建自定义 CSS 文件（除非是全局样式或 Tailwind 配置）
+- 所有样式必须通过 Tailwind 工具类实现
+
+#### 样式文件位置
+
+- 全局样式：`src/renderer/src/assets/main.css`
+- 组件样式：通过 Tailwind 类名直接在组件中编写
+- 特殊样式：如需自定义 CSS，应在 `main.css` 中使用 `@layer` 指令
+
+### 类名合并工具
+
+- **必须使用 `cn()` 工具函数合并类名**
+- `cn()` 函数位于 `@renderer/lib/utils`，基于 `clsx` 和 `tailwind-merge`
+- 示例：
+  ```tsx
+  import { cn } from '@renderer/lib/utils'
+  
+  <div className={cn("base-class", condition && "conditional-class", className)} />
+  ```
+
+## 组件规范
+
+### Shadcn UI（优先使用）
+
+- **优先使用 shadcn/ui 组件库中的组件**
+- 组件位置：`src/renderer/src/components/ui/`
+- 组件导入路径：`@renderer/components/ui/{component-name}`
+
+#### 可用组件列表
+
+- `Button` - 按钮组件
+- `Dialog` - 对话框组件
+- `Input` - 输入框组件
+- `Textarea` - 文本域组件
+- `Select` - 选择器组件
+- `Card` - 卡片组件
+- `Checkbox` - 复选框组件
+- `DropdownMenu` - 下拉菜单组件
+- `Label` - 标签组件
+- `ScrollArea` - 滚动区域组件
+- `Separator` - 分隔线组件
+- `Sheet` - 侧边栏组件
+- `Sidebar` - 侧边栏组件
+- `Skeleton` - 骨架屏组件
+- `Slider` - 滑块组件
+- `Tooltip` - 提示框组件
+- `AlertDialog` - 警告对话框组件
+- `InputGroup` - 输入组组件
+
+#### 添加新组件
+
+如需添加新的 shadcn 组件：
+
+1. 使用 shadcn CLI 添加：
+   ```bash
+   pnpm dlx shadcn@latest add {component-name}
+   ```
+
+2. 组件会自动添加到 `src/renderer/src/components/ui/` 目录
+
+3. 按照 shadcn 的组件规范使用
+
+### 组件变体管理
+
+- **使用 `class-variance-authority` (cva) 管理组件变体**
+- 示例参考：`src/renderer/src/components/ui/button.tsx`
+- 变体定义应使用 `cva()` 函数
+- 组件应支持 `variant` 和 `size` 等常用变体
+
+### 组件 Props 规范
+
+- 组件必须支持 `className` prop 以允许外部样式覆盖
+- 使用 `React.ComponentProps<"element">` 继承原生元素属性
+- 使用 `VariantProps` 类型定义变体类型
+
+## 设计系统
+
+### 颜色系统
+
+- **使用 CSS 变量定义颜色**
+- 颜色变量定义在 `main.css` 的 `:root` 和 `.dark` 中
+- 支持明暗主题切换
+- 颜色命名遵循语义化命名：
+  - `--color-primary` - 主色
+  - `--color-secondary` - 次要色
+  - `--color-accent` - 强调色
+  - `--color-destructive` - 危险色
+  - `--color-muted` - 静音色
+  - `--color-border` - 边框色
+  - `--color-background` - 背景色
+  - `--color-foreground` - 前景色
+
+### 间距系统
+
+- 使用 Tailwind 的间距系统（`p-*`, `m-*`, `gap-*` 等）
+- 优先使用语义化的间距值：
+  - `gap-2` (0.5rem) - 小间距
+  - `gap-4` (1rem) - 中间距
+  - `gap-6` (1.5rem) - 大间距
+
+### 圆角系统
+
+- 使用 CSS 变量定义的圆角系统：
+  - `--radius-sm` - 小圆角
+  - `--radius-md` - 中圆角
+  - `--radius-lg` - 大圆角（默认）
+- 或使用 Tailwind 类：`rounded-md`, `rounded-lg` 等
+
+### 字体系统
+
+- 字体定义在 `main.css` 的 `body` 中
+- 使用系统字体栈，确保跨平台一致性
+- 字体大小使用 Tailwind 的文本大小类：`text-sm`, `text-base`, `text-lg` 等
+
+## 响应式设计
+
+### 断点使用
+
+- 使用 Tailwind 的响应式前缀：
+  - `sm:` - 640px 及以上
+  - `md:` - 768px 及以上
+  - `lg:` - 1024px 及以上
+  - `xl:` - 1280px 及以上
+
+### 移动端适配
+
+- 优先考虑移动端体验
+- 使用响应式类名确保在不同屏幕尺寸下的良好显示
+- 示例：
+  ```tsx
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+  ```
+
+## 图标规范
+
+### 图标库
+
+- **使用 `lucide-react` 作为图标库**
+- 导入方式：
+  ```tsx
+  import { IconName } from 'lucide-react'
+  ```
+
+### 图标使用
+
+- 图标应使用合适的尺寸类：`size-4`, `size-5`, `size-6` 等
+- 图标颜色使用语义化颜色类：`text-primary`, `text-muted-foreground` 等
+- 图标作为按钮内容时，应添加适当的间距
+
+## 表单规范
+
+### 表单组件
+
+- 使用 shadcn 的表单组件：`Input`, `Textarea`, `Select`, `Checkbox` 等
+- 表单标签使用 `Label` 组件
+- 表单验证错误应使用 `aria-invalid` 属性
+
+### 表单布局
+
+- 使用 `grid` 布局组织表单字段
+- 字段间距使用 `gap-4` 或 `gap-6`
+- 示例：
+  ```tsx
+  <div className="grid gap-4">
+    <div className="grid gap-2">
+      <Label htmlFor="field">Field Label</Label>
+      <Input id="field" />
+    </div>
+  </div>
+  ```
+
+## 交互规范
+
+### 按钮交互
+
+- 使用 `Button` 组件的变体：
+  - `default` - 主要操作
+  - `secondary` - 次要操作
+  - `outline` - 边框按钮
+  - `ghost` - 幽灵按钮
+  - `destructive` - 危险操作
+  - `link` - 链接样式
+
+### 加载状态
+
+- 使用 `Skeleton` 组件显示加载状态
+- 按钮加载状态使用 `disabled` 属性
+- 可配合 `isLoading` 状态显示加载指示器
+
+### 空状态
+
+- 使用 `EmptyState` 组件显示空状态
+- 空状态应提供明确的提示信息和操作建议
+
+## 可访问性规范
+
+### ARIA 属性
+
+- 使用适当的 ARIA 属性提升可访问性
+- 表单字段应关联 `Label`
+- 按钮应使用语义化的 `aria-label`（当文本不明确时）
+
+### 键盘导航
+
+- 确保所有交互元素可通过键盘访问
+- 使用 `focus-visible:` 类定义焦点样式
+- 模态框应支持 ESC 键关闭
+
+### 颜色对比度
+
+- 确保文本和背景有足够的对比度
+- 使用设计系统定义的颜色变量，已考虑对比度要求
+
+## 性能优化
+
+### 样式优化
+
+- 避免使用动态类名生成大量样式
+- 使用 Tailwind 的 JIT 模式（默认启用）
+- 避免在运行时动态计算类名
+
+### 组件优化
+
+- 使用 `React.memo` 优化重复渲染的组件
+- 合理使用 `useMemo` 和 `useCallback` 优化计算和函数
+
+## 代码示例
+
+### 标准组件结构
+
+```tsx
+import { cn } from '@renderer/lib/utils'
+import { Button } from '@renderer/components/ui/button'
+
+interface MyComponentProps {
+  className?: string
+  variant?: 'default' | 'outline'
+}
+
+export const MyComponent: React.FC<MyComponentProps> = ({
+  className,
+  variant = 'default'
+}) => {
+  return (
+    <div className={cn("base-styles", className)}>
+      <Button variant={variant}>Click me</Button>
+    </div>
+  )
+}
+```
+
+### 表单组件示例
+
+```tsx
+import { Input } from '@renderer/components/ui/input'
+import { Label } from '@renderer/components/ui/label'
+import { Button } from '@renderer/components/ui/button'
+
+export const FormExample: React.FC = () => {
+  return (
+    <form className="grid gap-4">
+      <div className="grid gap-2">
+        <Label htmlFor="email">Email</Label>
+        <Input id="email" type="email" placeholder="Enter email" />
+      </div>
+      <Button type="submit">Submit</Button>
+    </form>
+  )
+}
+```
+
+## 禁止事项
+
+- ❌ 禁止使用内联样式（`style` 属性）
+- ❌ 禁止创建自定义 CSS 文件（除非是全局样式）
+- ❌ 禁止直接使用原生 HTML 元素替代 shadcn 组件（如使用 `<button>` 而非 `<Button>`）
+- ❌ 禁止硬编码颜色值（必须使用 CSS 变量或 Tailwind 颜色类）
+- ❌ 禁止使用 `className` 字符串拼接（必须使用 `cn()` 函数）
+- ❌ 禁止忽略可访问性要求（必须使用 ARIA 属性和语义化 HTML）
+- ❌ 禁止在组件中直接使用 `!important`（通过 Tailwind 的优先级或调整类名顺序解决）
+- ❌ 禁止使用非 shadcn 的第三方 UI 组件库（除非 shadcn 不提供对应组件）
