@@ -13,6 +13,11 @@
 
 ## 待开发
 
+- [ ] 工具调用消息显示功能 (设计文档 → [07.TOOL_CALL_DISPLAY_DESIGN.md](./07.TOOL_CALL_DISPLAY_DESIGN.md))
+  - [ ] 阶段一：基础工具调用显示
+  - [ ] 阶段二：实时状态更新
+  - [ ] 阶段三：UI 实现和优化
+  - [ ] 阶段四：测试和完善
 - [ ] tools support openai 内置 tools
 - [ ] tools support 客户端 自定义 tools
 - [ ] 增加 project 概念

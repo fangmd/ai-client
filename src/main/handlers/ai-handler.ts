@@ -21,17 +21,19 @@ export class AIHandler {
   static register(): void {
     // 流式聊天请求处理
     ipcMain.on(IPC_CHANNELS.ai.streamChat, async (event, request) => {
-      const { messages, config, requestId } = request as {
+      const { messages, config, requestId, tools } = request as {
         messages: Omit<Message, 'id' | 'timestamp'>[]
         config: AIConfig
         requestId: string
+        tools?: Array<'web_search' | 'file_search'>
       }
 
       logInfo('【IPC Handler】ai:streamChat called, params:', {
         requestId,
         messagesCount: messages.length,
         provider: config.provider,
-        model: config.model
+        model: config.model,
+        tools: tools || []
       })
 
       try {
@@ -85,7 +87,8 @@ export class AIHandler {
               activeRequests.delete(requestId)
             }
           },
-          abortController.signal
+          abortController.signal,
+          tools ? { tools } : undefined
         )
       } catch (error) {
         logError('【IPC Handler】ai:streamChat exception, requestId:', requestId, 'error:', error)

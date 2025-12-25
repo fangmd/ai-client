@@ -2,6 +2,11 @@ import type { Message, AIConfig } from '@/types/chat-type'
 import { OpenAIProvider } from './openai-provider'
 
 /**
+ * 工具类型
+ */
+export type ToolType = 'web_search' | 'file_search'
+
+/**
  * AI Provider 接口
  * 所有 AI 提供商必须实现此接口
  */
@@ -12,6 +17,7 @@ export interface AIProvider {
    * @param config AI 配置
    * @param callbacks 回调函数
    * @param abortSignal 取消信号
+   * @param options 可选参数，包括工具列表
    */
   streamChat(
     messages: Omit<Message, 'id' | 'timestamp'>[],
@@ -21,7 +27,10 @@ export interface AIProvider {
       onDone: () => void
       onError: (error: Error) => void
     },
-    abortSignal?: AbortSignal
+    abortSignal?: AbortSignal,
+    options?: {
+      tools?: ToolType[]
+    }
   ): Promise<void>
 
   /**
