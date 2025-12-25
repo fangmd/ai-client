@@ -6,7 +6,7 @@ import { Check, Copy } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import copy from 'copy-to-clipboard'
 import { useState } from 'react'
-import type { Message } from '@/types/chat-type'
+import type { Message } from '@/types'
 import { ToolCallItem } from './tool-call-item'
 
 interface Props {

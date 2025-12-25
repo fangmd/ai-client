@@ -2,14 +2,8 @@ import { ipcMain } from 'electron'
 import { IPC_CHANNELS } from '@/common/constants'
 import { responseSuccess, responseError } from '@/common/response'
 import type {
-  CreateMessageData,
-  UpdateMessageData,
-  MessageRole,
-  DbMessageStatus,
   Attachment,
-  MessageContentType,
-  ToolType,
-  ToolCallStatus,
+  CreateMessageData,
   CreateMessageRequest,
   UpdateMessageRequest,
   AppendMessageRequest,

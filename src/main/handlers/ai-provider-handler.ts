@@ -1,13 +1,7 @@
 import { ipcMain } from 'electron'
 import { IPC_CHANNELS } from '@/common/constants'
 import { responseSuccess, responseError } from '@/common/response'
-import type {
-  CreateAiProviderData,
-  UpdateAiProviderData,
-  UpdateAiProviderRequest,
-  DeleteAiProviderRequest,
-  SetDefaultAiProviderRequest
-} from '@/types'
+import type { CreateAiProviderData, UpdateAiProviderRequest } from '@/types'
 import {
   createAiProvider,
   getAllAiProviders,

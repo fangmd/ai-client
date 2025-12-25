@@ -5,7 +5,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@renderer/components/ui/select'
-import type { AiProvider } from '@/types/ai-provider-type'
+import type { AiProvider } from '@/types'
 
 interface Props {
   providers: AiProvider[]

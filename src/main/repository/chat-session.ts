@@ -2,7 +2,7 @@ import { prisma } from '@/main/common/db/prisma'
 import { generateUUID } from '@/main/utils/snowflake'
 import { listMessages } from './message'
 import { listAttachmentsByMessageIds } from './attachment'
-import type { DbChatSession, CreateChatSessionData, UpdateChatSessionData, Attachment } from '@/types'
+import type { Attachment, DbChatSession, CreateChatSessionData, UpdateChatSessionData } from '@/types'
 
 /**
  * 创建对话会话

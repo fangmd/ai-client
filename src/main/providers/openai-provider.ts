@@ -3,7 +3,7 @@ import type {
   ChatCompletionContentPart,
   ChatCompletionMessageParam
 } from 'openai/resources/chat/completions'
-import type { Message, AIConfig, ToolCallInfo } from '@/types/chat-type'
+import type { Message, AIConfig, ToolCallInfo } from '@/types'
 import type { AIProvider, ToolType, StreamCallbacks } from './index'
 import { logInfo, logError, logDebug, logWarn } from '../utils/logger'
 import {

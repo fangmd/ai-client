@@ -1,5 +1,5 @@
 import { X } from 'lucide-react'
-import type { Attachment } from '@/types/chat-type'
+import type { Attachment } from '@/types'
 import { Button } from '@renderer/components/ui/button'
 
 interface AttachmentPreviewProps {

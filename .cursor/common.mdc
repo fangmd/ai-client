@@ -1,44 +1,9 @@
 ---
-description: 项目通用开发规范和最佳实践，包括类型定义规范、代码风格、模块设计等常用规则
+description: 项目通用开发规范和最佳实践，包括代码风格、模块设计等常用规则
 globs: 
 alwaysApply: true
 ---
 # 通用开发规范
-
-## 类型定义规范
-
-### 类型文件位置
-- **所有类型定义必须放在 `src/types/` 目录下**
-- **按功能模块组织类型文件**，不按层级划分（如不使用 `repository.ts`）
-- 每个功能模块的类型应该独立成文件，文件名格式：`{module-name}.ts`
-- 示例：
-  - `src/types/chat.ts` - 聊天相关类型（包含前端和数据库类型）
-  - `src/types/ai-provider.ts` - AI Provider 相关类型
-  - `src/types/user.ts` - 用户相关类型
-
-### 类型命名规范
-- **数据库实体类型**：使用 `Db` 前缀，如 `DbMessage`、`DbChatSession`
-  - 使用 `bigint` 作为 ID 类型（与数据库一致）
-  - 使用 `Date` 类型表示时间字段
-- **前端/渲染进程类型**：使用普通名称，如 `Message`、`ChatSession`
-  - 使用 `string` 作为 ID 类型（JSON 序列化兼容）
-  - 使用 `number` (timestamp) 表示时间字段
-- **DTO 类型**：使用 `Create`/`Update` 前缀，如 `CreateMessageData`、`UpdateChatSessionData`
-
-### 类型导出规范
-- 使用 `export interface` 或 `export type` 导出类型
-- 优先使用 `interface` 定义对象类型
-- 使用 `type` 定义联合类型、交叉类型或类型别名
-- **禁止在 repository、handler 等业务代码文件中定义类型**，必须统一放在 `src/types/` 目录
-- `src/types/index.ts` 统一导出所有模块类型，业务代码从 `@/types` 导入
-
-### 类型导入规范
-- **统一从 `@/types` 导入类型**（通过 index.ts 统一导出）
-- 示例：
-  - `import type { AiProvider, CreateAiProviderData } from '@/types'`
-  - `import type { DbMessage, CreateMessageData, MessageRole } from '@/types'`
-- 禁止直接从具体模块文件导入（如 `@/types/chat`），统一从 `@/types` 导入
-- 禁止在 `preload/index.d.ts` 等文件中直接定义业务类型，应该从 `@/types` 导入并重新导出（如需要保持向后兼容）
 
 ## 代码风格规范
 
@@ -114,9 +79,6 @@ alwaysApply: true
 
 ## 禁止事项
 
-- ❌ 禁止在业务代码文件中定义类型（必须放在 `src/types/`）
-- ❌ 禁止在 `repository`、`handler` 等文件中定义类型（统一按模块放在 `src/types/` 下）
-- ❌ 禁止直接从 `@/types/chat`、`@/types/ai-provider` 等具体文件导入（统一从 `@/types` 导入）
 - ❌ 禁止使用 npm 和 yarn（必须使用 pnpm）
 - ❌ 禁止过度设计，保持代码简洁实用
 - ❌ 禁止修改不相关的模块代码

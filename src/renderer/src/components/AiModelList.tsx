@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Button } from '@renderer/components/ui/button'
 import { AiModelDialog } from './AiModelDialog'
 import { EmptyState } from './EmptyState'
-import type { AiProvider } from '@/types/ai-provider-type'
+import type { AiProvider } from '@/types'
 import { Plus, Trash2, Star, Bot, Pencil } from 'lucide-react'
 import { useAiProviderStore } from '@renderer/stores/ai-provider-store'
 

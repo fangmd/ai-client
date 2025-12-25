@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { IPCResponse, ThemeMode, ConfigItem } from '@/types'
 import { IPC_CHANNELS, SUCCESS_CODE } from '@/common/constants/ipc'
-import { CONFIG_KEYS, DEFAULT_CONFIG } from '@/types/config-type'
+import { CONFIG_KEYS, DEFAULT_CONFIG } from '@/types'
 import { applyTheme, setupSystemThemeListener } from '@renderer/utils'
 
 interface ConfigState {

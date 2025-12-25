@@ -1,5 +1,7 @@
+// ==================== Config 数据库类型（主进程/Repository 使用） ====================
+
 /**
- * 配置项
+ * 配置项（数据库实体）
  */
 export interface ConfigItem {
   key: string
@@ -8,26 +10,7 @@ export interface ConfigItem {
   updatedAt?: Date
 }
 
-/**
- * 主题模式
- */
-export type ThemeMode = 'light' | 'dark' | 'system'
-
-/**
- * 配置键常量
- */
-export const CONFIG_KEYS = {
-  THEME: 'theme'
-} as const
-
-/**
- * 默认配置
- */
-export const DEFAULT_CONFIG = {
-  [CONFIG_KEYS.THEME]: 'system' as ThemeMode
-} as const
-
-// ==================== IPC 请求参数类型 ====================
+// ==================== Config 相关 IPC 请求类型 ====================
 
 /**
  * 获取配置请求参数

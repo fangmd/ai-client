@@ -1,4 +1,4 @@
-import type { Message, AIConfig, ToolCallInfo } from '@/types/chat-type'
+import type { Message, AIConfig, ToolCallInfo } from '@/types'
 import { OpenAIProvider } from './openai-provider'
 
 /**

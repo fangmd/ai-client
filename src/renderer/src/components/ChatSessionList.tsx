@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { useChatStore, type ChatSession } from '@renderer/stores/chatStore'
+import { useChatStore } from '@renderer/stores/chatStore'
+import type { IpcChatSession } from '@/types'
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@renderer/components/ui/sidebar'
 import { Trash2, Plus } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
@@ -35,7 +36,7 @@ export const ChatSessionList: React.FC<ChatSessionListProps> = ({ onNewChat }) =
     }
   }
 
-  const handleSelectSession = (session: ChatSession) => {
+  const handleSelectSession = (session: IpcChatSession) => {
     if (session.id !== currentSessionId) {
       // 如果正在处理流式消息，先停止
       if (isSending) {

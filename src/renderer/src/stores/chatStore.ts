@@ -1,53 +1,18 @@
 import { create } from 'zustand'
-import type { AIConfig, Attachment } from '@/types/chat-type'
+import type { AIConfig, Attachment } from '@/types'
 import type {
   IPCResponse,
-  SerializedChatSession,
-  SerializedMessage
+  IpcChatSession,
+  IpcMessage
 } from '@/types'
 import { IPC_CHANNELS, SUCCESS_CODE } from '@/common/constants/ipc'
-
-/**
- * 前端使用的 ChatSession 类型
- */
-export interface ChatSession {
-  id: bigint
-  title: string
-  aiProviderId: bigint
-  createdAt: string
-  updatedAt: string
-}
-
-/**
- * 前端使用的 Message 类型
- */
-export interface Message {
-  id: bigint
-  sessionId: bigint
-  role: 'user' | 'assistant' | 'system' | 'tool'
-  content: string
-  attachments?: Attachment[]  // 附件列表
-  status: 'sent' | 'pending' | 'error' | null
-  totalTokens: number | null
-  createdAt: string
-  
-  // 工具调用相关字段
-  contentType?: 'text' | 'tool_call'
-  toolCall?: {
-    itemId: string
-    type: 'web_search' | 'file_search'
-    status: 'in_progress' | 'searching' | 'completed' | 'failed'
-    query?: string
-    outputIndex?: number
-  }
-}
 
 interface ChatState {
   // 当前会话
   currentSessionId: bigint | null
   currentAiProviderId: bigint | null // 当前使用的 AI Provider ID
-  sessions: ChatSession[]
-  messages: Message[]
+  sessions: IpcChatSession[]
+  messages: IpcMessage[]
 
   // AI 配置
   config: AIConfig | null
@@ -88,7 +53,7 @@ interface ChatState {
         outputIndex?: number
       }
     }
-  ) => Promise<Message | null>
+  ) => Promise<IpcMessage | null>
   updateMessage: (id: bigint, data: { 
     content?: string
     status?: 'sent' | 'pending' | 'error'
@@ -105,8 +70,8 @@ interface ChatState {
   setIsSending: (isSending: boolean) => void
 
   // Actions - 本地消息操作（用于流式响应时的实时更新）
-  addLocalMessage: (message: Message) => void
-  updateLocalMessage: (id: bigint, updates: Partial<Message>) => void
+  addLocalMessage: (message: IpcMessage) => void
+  updateLocalMessage: (id: bigint, updates: Partial<IpcMessage>) => void
   appendToLocalMessage: (id: bigint, content: string) => void
 
   // Actions - 流式消息控制
@@ -139,7 +104,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const response = (await window.electron.ipcRenderer.invoke(
         IPC_CHANNELS.chatSession.list,
         {}
-      )) as IPCResponse<SerializedChatSession[]>
+      )) as IPCResponse<IpcChatSession[]>
 
       if (response.code === SUCCESS_CODE && response.data) {
         set({ sessions: response.data })
@@ -160,7 +125,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const response = (await window.electron.ipcRenderer.invoke(
         IPC_CHANNELS.chatSession.get,
         { id }
-      )) as IPCResponse<SerializedChatSession & { messages: SerializedMessage[] }>
+      )) as IPCResponse<IpcChatSession & { messages: IpcMessage[] }>
 
       if (response.code === SUCCESS_CODE && response.data) {
         set({
@@ -184,7 +149,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const response = (await window.electron.ipcRenderer.invoke(
         IPC_CHANNELS.chatSession.create,
         { aiProviderId, title }
-      )) as IPCResponse<SerializedChatSession>
+      )) as IPCResponse<IpcChatSession>
 
       if (response.code === SUCCESS_CODE && response.data) {
         const newSession = response.data
@@ -211,7 +176,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const response = (await window.electron.ipcRenderer.invoke(
         IPC_CHANNELS.chatSession.update,
         { id, data }
-      )) as IPCResponse<SerializedChatSession>
+      )) as IPCResponse<IpcChatSession>
 
       if (response.code === SUCCESS_CODE && response.data) {
         set((state) => ({
@@ -267,7 +232,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           contentType: message.contentType,
           toolCall: message.toolCall
         }
-      )) as IPCResponse<SerializedMessage>
+      )) as IPCResponse<IpcMessage>
 
       if (response.code === SUCCESS_CODE && response.data) {
         const newMessage = response.data
@@ -293,7 +258,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const response = (await window.electron.ipcRenderer.invoke(
         IPC_CHANNELS.message.update,
         { id, data }
-      )) as IPCResponse<SerializedMessage>
+      )) as IPCResponse<IpcMessage>
 
       if (response.code === SUCCESS_CODE && response.data) {
         set((state) => ({
@@ -315,7 +280,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const response = (await window.electron.ipcRenderer.invoke(
         IPC_CHANNELS.message.append,
         { id, content }
-      )) as IPCResponse<SerializedMessage>
+      )) as IPCResponse<IpcMessage>
 
       if (response.code === SUCCESS_CODE && response.data) {
         set((state) => ({

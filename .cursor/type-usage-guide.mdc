@@ -1,0 +1,205 @@
+---
+description: 项目类型定义和使用规范，包括类型文件组织、命名规范、导入规范等，确保类型系统的一致性和类型安全
+globs: 
+alwaysApply: true
+---
+# 类型定义和使用规范
+
+## 类型文件组织
+
+### 文件位置
+- **所有类型定义必须放在 `src/types/` 目录下**
+- **按功能模块组织类型文件**，不按层级划分（如不使用 `repository.ts`）
+- 每个功能模块的类型应该独立成文件，文件名格式：`{module-name}-{layer}-type.ts`
+
+### 文件命名规范
+- **数据库类型文件**：`{module-name}-db-type.ts`（主进程/Repository 使用）
+- **前端类型文件**：`{module-name}-frontend-type.ts`（渲染进程使用）
+- **IPC 类型文件**：`ipc-type.ts`（通用 IPC 类型）
+- 示例：
+  - `ai-provider-db-type.ts` - AI Provider 数据库类型和 IPC 请求类型
+  - `ai-provider-frontend-type.ts` - AI Provider 前端类型
+  - `chat-db-type.ts` - Chat 数据库类型和 IPC 请求类型
+  - `chat-frontend-type.ts` - Chat 前端类型
+  - `config-db-type.ts` - Config 数据库类型和 IPC 请求类型
+  - `config-frontend-type.ts` - Config 前端类型
+  - `ipc-type.ts` - 通用 IPC 响应类型
+
+### 类型导出规范
+- 使用 `export interface` 或 `export type` 导出类型
+- 优先使用 `interface` 定义对象类型
+- 使用 `type` 定义联合类型、交叉类型或类型别名
+- **禁止在 repository、handler 等业务代码文件中定义类型**，必须统一放在 `src/types/` 目录
+- `src/types/index.ts` 统一导出所有模块类型，业务代码从 `@/types` 导入
+
+### 类型文件结构
+每个类型文件应包含清晰的注释分隔，格式如下：
+
+```typescript
+// ==================== 模块名 数据库类型（主进程/Repository 使用） ====================
+
+// 数据库实体类型定义
+
+// ==================== 模块名 前端类型（渲染进程使用） ====================
+
+// 前端类型定义
+
+// ==================== 模块名 相关 IPC 请求类型 ====================
+
+// IPC 请求类型定义
+```
+
+## 类型命名规范
+
+### 数据库类型命名
+- **数据库实体类型**：使用 `Db` 前缀，如 `DbMessage`、`DbChatSession`、`DbAttachment`
+  - 使用 `bigint` 作为 ID 类型（与数据库一致）
+  - 使用 `Date` 类型表示时间字段
+  - 字符串字段使用 `string` 类型
+  - 可空字段使用 `| null` 或 `?` 标记
+
+### 前端类型命名
+- **前端/渲染进程类型**：使用普通名称，如 `Message`、`ChatSession`、`Attachment`
+  - 使用 `bigint` 作为 ID 类型（IPC 传输时保持 bigint，前端显示时转换为 string）
+  - 使用 `number` (timestamp) 表示时间字段
+  - 字符串字段使用 `string` 类型
+  - 可空字段使用 `?` 标记
+
+### DTO 类型命名
+- **创建数据**：使用 `Create` 前缀，如 `CreateMessageData`、`CreateChatSessionData`
+- **更新数据**：使用 `Update` 前缀，如 `UpdateMessageData`、`UpdateChatSessionData`
+- **IPC 请求类型**：使用 `{Action}{Entity}Request` 格式，如 `CreateMessageRequest`、`UpdateChatSessionRequest`
+
+### 枚举和联合类型命名
+- **枚举类型**：使用 PascalCase，如 `MessageRole`、`MessageStatus`、`ToolType`
+- **联合类型**：使用 PascalCase，如 `ThemeMode = 'light' | 'dark' | 'system'`
+
+### 常量命名
+- **配置常量**：使用 `CONFIG_KEYS`、`DEFAULT_CONFIG` 等全大写下划线格式
+- **常量值**：使用 `as const` 确保类型推断
+
+## 类型导入规范
+
+### 统一导入路径
+- **统一从 `@/types` 导入类型**（通过 index.ts 统一导出）
+- 禁止直接从具体模块文件导入（如 `@/types/chat-db-type`），统一从 `@/types` 导入
+- 示例：
+  ```typescript
+  // ✅ 正确
+  import type { AiProvider, CreateAiProviderData } from '@/types'
+  import type { DbMessage, CreateMessageData, MessageRole } from '@/types'
+  import type { IPCResponse } from '@/types'
+  
+  // ❌ 错误
+  import type { AiProvider } from '@/types/ai-provider-frontend-type'
+  import type { DbMessage } from '@/types/chat-db-type'
+  ```
+
+### 导入顺序
+1. 第三方库导入
+2. 项目内部模块导入
+3. **类型导入（使用 `import type`）** - 放在最后
+4. 相对路径导入
+
+### 类型导入语法
+- **必须使用 `import type`** 进行类型导入，确保类型导入在编译时被移除
+- 示例：
+  ```typescript
+  import type { Message, AIConfig } from '@/types'
+  import type { IPCResponse } from '@/types'
+  ```
+
+## 类型使用场景
+
+### 主进程（Main Process）
+- **Repository 层**：使用数据库类型（`Db*`）和 DTO 类型（`Create*Data`、`Update*Data`）
+- **Handler 层**：使用 IPC 请求类型（`*Request`）和数据库类型
+- **Provider 层**：使用前端类型（`Message`、`AIConfig`）进行 API 调用
+
+### 渲染进程（Renderer Process）
+- **组件层**：使用前端类型（`Message`、`ChatSession`、`AiProvider`）
+- **Store 层**：使用前端类型和 IPC 响应类型（`IPCResponse<T>`）
+- **Service 层**：使用前端类型（`Message`、`AIConfig`）
+
+### IPC 通信
+- **请求类型**：定义在对应的 `-db-type.ts` 文件中，如 `CreateMessageRequest`、`UpdateChatSessionRequest`
+- **响应类型**：统一使用 `IPCResponse<T>` 格式
+- **传输类型**：对于需要序列化的类型（如 `IpcChatSession`、`IpcMessage`），将 `Date` 转换为 `string`
+
+## 类型转换规范
+
+### 数据库到前端类型转换
+- **ID 类型**：`bigint` → `bigint`（IPC 传输时保持 bigint，前端显示时按需转换为 string）
+- **时间类型**：`Date` → `number` (timestamp) 或 `string`（IPC 传输时）
+- **可空字段**：保持可空性一致
+
+### IPC 传输类型转换
+- **Date 字段**：转换为 `string`（ISO 格式）或 `number` (timestamp)
+- **bigint 字段**：保持 `bigint`（JSON 序列化时自动转换为字符串，反序列化时需手动转换）
+
+## 类型文件示例
+
+### 数据库类型文件示例
+```typescript
+// ==================== AI Provider 数据库类型（主进程/Repository 使用） ====================
+
+import type { UpdateAiProviderData } from './ai-provider-frontend-type'
+
+// ==================== AI Provider 相关 IPC 请求类型 ====================
+
+/**
+ * 更新 AI Provider 请求参数
+ */
+export interface UpdateAiProviderRequest {
+  id: bigint
+  data: UpdateAiProviderData
+}
+```
+
+### 前端类型文件示例
+```typescript
+// ==================== AI Provider 前端类型（渲染进程使用） ====================
+
+/**
+ * AI Provider 类型（前端使用，从 IPC 传输）
+ */
+export interface AiProvider {
+  id: bigint
+  name: string | null
+  provider: string
+  apiKey: string
+  baseURL: string | null
+  model: string
+  temperature: number | null
+  maxTokens: number | null
+  organization: string | null
+  isDefault: boolean
+  createdAt: Date
+  updatedAt: Date
+}
+
+/**
+ * AI Provider 创建数据（前端表单使用）
+ */
+export interface CreateAiProviderData {
+  name?: string | null
+  provider: string
+  apiKey: string
+  baseURL?: string | null
+  model: string
+  temperature?: number | null
+  maxTokens?: number | null
+  organization?: string | null
+  isDefault?: boolean
+}
+```
+
+## 禁止事项
+
+- ❌ 禁止在业务代码文件中定义类型（必须放在 `src/types/`）
+- ❌ 禁止在 `repository`、`handler` 等文件中定义类型（统一按模块放在 `src/types/` 下）
+- ❌ 禁止直接从 `@/types/chat-db-type`、`@/types/ai-provider-frontend-type` 等具体文件导入（统一从 `@/types` 导入）
+- ❌ 禁止使用 `any` 类型（优先使用具体类型或 `unknown`）
+- ❌ 禁止在类型定义中使用硬编码字符串（使用常量或联合类型）
+- ❌ 禁止混用数据库类型和前端类型（明确区分使用场景）
+- ❌ 禁止在类型文件中导入业务逻辑代码（类型文件应保持纯净，只包含类型定义）

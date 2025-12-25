@@ -10,7 +10,7 @@ import {
 } from '@renderer/components/ui/dialog'
 import { Button } from '@renderer/components/ui/button'
 import { useChatStore } from '@renderer/stores/chatStore'
-import type { AIConfig } from '@/types/chat-type'
+import type { AIConfig } from '@/types'
 
 export const Settings: React.FC<{ open?: boolean; onOpenChange?: (open: boolean) => void }> = ({
   open: openProp,

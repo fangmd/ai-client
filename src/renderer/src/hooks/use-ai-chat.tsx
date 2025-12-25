@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react'
-import type { AIConfig, Attachment } from '@/types/chat-type'
+import type { AIConfig, Attachment } from '@/types'
 import type { IPCResponse } from '@/types'
 import { IPC_CHANNELS } from '@/common/constants/ipc'
 import { useChatStore } from '@renderer/stores/chatStore'

@@ -3,7 +3,6 @@ import { IPC_CHANNELS } from '@/common/constants'
 import { responseSuccess, responseError } from '@/common/response'
 import type {
   CreateChatSessionData,
-  UpdateChatSessionData,
   CreateChatSessionRequest,
   ListChatSessionsRequest,
   GetChatSessionRequest,

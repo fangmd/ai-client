@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@renderer/components/ui/select'
-import type { CreateAiProviderData, AiProvider, UpdateAiProviderData } from '@/types/ai-provider-type'
+import type { CreateAiProviderData, AiProvider, UpdateAiProviderData } from '@/types'
 import { useAiProviderStore } from '@renderer/stores/ai-provider-store'
 import { logDebug } from '@renderer/utils'
 

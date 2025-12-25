@@ -1,6 +1,5 @@
 import { create } from 'zustand'
-import type { AiProvider, CreateAiProviderData, UpdateAiProviderData } from '@/types/ai-provider-type'
-import type { IPCResponse } from '@/types'
+import type { AiProvider, CreateAiProviderData, UpdateAiProviderData, IPCResponse } from '@/types'
 import { IPC_CHANNELS, SUCCESS_CODE } from '@/common/constants/ipc'
 
 interface AiProviderState {

@@ -1,6 +1,6 @@
 import { Globe, FolderSearch, Loader2, CheckCircle2, XCircle, Wrench } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
-import type { Message } from '@/types/chat-type'
+import type { Message } from '@/types'
 import { cn } from '@renderer/lib/utils'
 
 interface ToolCallItemProps {

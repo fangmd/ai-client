@@ -3,7 +3,7 @@ import { IPC_CHANNELS } from '@/common/constants'
 import { responseSuccess, responseError } from '@/common/response'
 import { getConfig, getAllConfigs, setConfig, deleteConfig } from '@/main/repository/config'
 import { logError, logInfo } from '@/main/utils'
-import type { GetConfigRequest, SetConfigRequest, DeleteConfigRequest } from '@/types'
+import type { SetConfigRequest } from '@/types'
 
 /**
  * Config Handler
