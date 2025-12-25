@@ -89,6 +89,7 @@ export class ChatSessionHandler {
           return response
         }
 
+        // 直接返回，Electron IPC 会自动处理 Date 序列化
         const response = responseSuccess(session)
         logInfo('【IPC Handler】chatSession:get success, messagesCount:', session.messages.length)
         logDebug('【IPC Handler】chatSession:get success, session:', session)
@@ -119,19 +120,22 @@ export class ChatSessionHandler {
     )
 
     // 删除对话
-    ipcMain.handle(IPC_CHANNELS.chatSession.delete, async (_event, data: DeleteChatSessionRequest) => {
-      logInfo('【IPC Handler】chatSession:delete called, params:', data)
-      try {
-        await deleteChatSession(data.id)
-        const response = responseSuccess()
-        logInfo('【IPC Handler】chatSession:delete success, response:', response)
-        return response
-      } catch (error) {
-        const response = responseError(error)
-        logError('【IPC Handler】chatSession:delete error, response:', response)
-        return response
+    ipcMain.handle(
+      IPC_CHANNELS.chatSession.delete,
+      async (_event, data: DeleteChatSessionRequest) => {
+        logInfo('【IPC Handler】chatSession:delete called, params:', data)
+        try {
+          await deleteChatSession(data.id)
+          const response = responseSuccess()
+          logInfo('【IPC Handler】chatSession:delete success, response:', response)
+          return response
+        } catch (error) {
+          const response = responseError(error)
+          logError('【IPC Handler】chatSession:delete error, response:', response)
+          return response
+        }
       }
-    })
+    )
   }
 
   /**

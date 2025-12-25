@@ -3,7 +3,7 @@ import type {
   ChatCompletionContentPart,
   ChatCompletionMessageParam
 } from 'openai/resources/chat/completions'
-import type { Message, AIConfig, ToolCallInfo } from '@/types'
+import type { AIMessageInput, AIConfig, ToolCallInfo } from '@/types'
 import type { AIProvider, ToolType, StreamCallbacks } from './index'
 import { logInfo, logError, logDebug, logWarn } from '../utils/logger'
 import {
@@ -50,7 +50,7 @@ export class OpenAIProvider implements AIProvider {
    * 流式聊天实现
    */
   async streamChat(
-    messages: Omit<Message, 'id' | 'timestamp'>[],
+    messages: AIMessageInput[],
     config: AIConfig,
     callbacks: StreamCallbacks,
     abortSignal?: AbortSignal,
@@ -122,7 +122,7 @@ export class OpenAIProvider implements AIProvider {
    * 使用 Chat Completions API 进行流式聊天
    */
   private async streamChatWithCompletionsAPI(
-    messages: Omit<Message, 'id' | 'timestamp'>[],
+    messages: AIMessageInput[],
     config: AIConfig,
     callbacks: StreamCallbacks,
     abortSignal?: AbortSignal
@@ -144,42 +144,42 @@ export class OpenAIProvider implements AIProvider {
       const openaiMessages: ChatCompletionMessageParam[] = messages
         .filter((msg) => msg.role !== 'tool')
         .map((msg) => {
-        const hasImageAttachments = msg.attachments?.some((a) => a.type === 'image')
+          const hasImageAttachments = msg.attachments?.some((a) => a.type === 'image')
 
-        // 有图片附件时，使用 Vision 格式（只有 user 角色支持多模态内容）
-        if (hasImageAttachments && msg.role === 'user') {
-          const content: ChatCompletionContentPart[] = []
+          // 有图片附件时，使用 Vision 格式（只有 user 角色支持多模态内容）
+          if (hasImageAttachments && msg.role === 'user') {
+            const content: ChatCompletionContentPart[] = []
 
-          // 添加文本内容
-          if (msg.content) {
-            content.push({ type: 'text', text: msg.content })
-          }
+            // 添加文本内容
+            if (msg.content) {
+              content.push({ type: 'text', text: msg.content })
+            }
 
-          // 添加图片
-          msg.attachments
-            ?.filter((a) => a.type === 'image')
-            .forEach((a) => {
-              content.push({
-                type: 'image_url',
-                image_url: {
-                  url: `data:${a.mimeType};base64,${a.data}`,
-                  detail: 'auto'
-                }
+            // 添加图片
+            msg.attachments
+              ?.filter((a) => a.type === 'image')
+              .forEach((a) => {
+                content.push({
+                  type: 'image_url',
+                  image_url: {
+                    url: `data:${a.mimeType};base64,${a.data}`,
+                    detail: 'auto'
+                  }
+                })
               })
-            })
 
-          return {
-            role: 'user' as const,
-            content
+            return {
+              role: 'user' as const,
+              content
+            }
           }
-        }
 
-        // 无附件或非 user 角色，使用普通格式
-        return {
-          role: msg.role,
-          content: msg.content
-        } as ChatCompletionMessageParam
-      })
+          // 无附件或非 user 角色，使用普通格式
+          return {
+            role: msg.role,
+            content: msg.content
+          } as ChatCompletionMessageParam
+        })
 
       // 创建流式请求
       logDebug('Creating stream request to OpenAI API')
@@ -237,7 +237,7 @@ export class OpenAIProvider implements AIProvider {
    * 使用 Responses API 进行流式聊天
    */
   private async streamChatWithResponsesAPI(
-    messages: Omit<Message, 'id' | 'timestamp'>[],
+    messages: AIMessageInput[],
     config: AIConfig,
     callbacks: StreamCallbacks,
     abortSignal?: AbortSignal,
@@ -260,42 +260,42 @@ export class OpenAIProvider implements AIProvider {
       const openaiMessages: ChatCompletionMessageParam[] = messages
         .filter((msg) => msg.role !== 'tool')
         .map((msg) => {
-        const hasImageAttachments = msg.attachments?.some((a) => a.type === 'image')
+          const hasImageAttachments = msg.attachments?.some((a) => a.type === 'image')
 
-        // 有图片附件时，使用 Vision 格式（只有 user 角色支持多模态内容）
-        if (hasImageAttachments && msg.role === 'user') {
-          const content: ChatCompletionContentPart[] = []
+          // 有图片附件时，使用 Vision 格式（只有 user 角色支持多模态内容）
+          if (hasImageAttachments && msg.role === 'user') {
+            const content: ChatCompletionContentPart[] = []
 
-          // 添加文本内容
-          if (msg.content) {
-            content.push({ type: 'text', text: msg.content })
-          }
+            // 添加文本内容
+            if (msg.content) {
+              content.push({ type: 'text', text: msg.content })
+            }
 
-          // 添加图片
-          msg.attachments
-            ?.filter((a) => a.type === 'image')
-            .forEach((a) => {
-              content.push({
-                type: 'image_url',
-                image_url: {
-                  url: `data:${a.mimeType};base64,${a.data}`,
-                  detail: 'auto'
-                }
+            // 添加图片
+            msg.attachments
+              ?.filter((a) => a.type === 'image')
+              .forEach((a) => {
+                content.push({
+                  type: 'image_url',
+                  image_url: {
+                    url: `data:${a.mimeType};base64,${a.data}`,
+                    detail: 'auto'
+                  }
+                })
               })
-            })
 
-          return {
-            role: 'user' as const,
-            content
+            return {
+              role: 'user' as const,
+              content
+            }
           }
-        }
 
-        // 无附件或非 user 角色，使用普通格式
-        return {
-          role: msg.role,
-          content: msg.content
-        } as ChatCompletionMessageParam
-      })
+          // 无附件或非 user 角色，使用普通格式
+          return {
+            role: msg.role,
+            content: msg.content
+          } as ChatCompletionMessageParam
+        })
 
       // 构建工具列表 - OpenAI Responses API 的 tools 参数格式为对象数组
       // web_search: { type: "web_search" }
@@ -347,7 +347,7 @@ export class OpenAIProvider implements AIProvider {
 
       logDebug('Responses API stream connection established, starting to process chunks')
       let chunkCount = 0
-      
+
       // 用于跟踪工具调用状态
       const toolCallsMap = new Map<string, ToolCallInfo>()
 
@@ -361,6 +361,11 @@ export class OpenAIProvider implements AIProvider {
 
         // Responses API 使用不同的事件类型
         const chunkType = (chunk as any).type
+
+        logInfo('OpenAI Responses API stream chat chunk received', {
+          chunkType,
+          chunk
+        })
 
         switch (chunkType) {
           // 1. 工具调用开始
@@ -376,7 +381,7 @@ export class OpenAIProvider implements AIProvider {
               }
               toolCallsMap.set(event.item.id, toolInfo)
               callbacks.onToolCallStart?.(toolInfo)
-              
+
               logDebug('Tool call started', toolInfo)
             } else if (event.item?.type === 'file_search_call') {
               const toolInfo: ToolCallInfo = {
@@ -388,7 +393,7 @@ export class OpenAIProvider implements AIProvider {
               }
               toolCallsMap.set(event.item.id, toolInfo)
               callbacks.onToolCallStart?.(toolInfo)
-              
+
               logDebug('Tool call started', toolInfo)
             }
             break
@@ -401,7 +406,7 @@ export class OpenAIProvider implements AIProvider {
             if (toolInfo) {
               toolInfo.status = 'in_progress'
               callbacks.onToolCallProgress?.(toolInfo)
-              
+
               logDebug('Tool call in progress', toolInfo)
             }
             break
@@ -414,7 +419,7 @@ export class OpenAIProvider implements AIProvider {
             if (toolInfo) {
               toolInfo.status = 'searching'
               callbacks.onToolCallProgress?.(toolInfo)
-              
+
               logDebug('Tool call searching', toolInfo)
             }
             break
@@ -441,7 +446,7 @@ export class OpenAIProvider implements AIProvider {
                 toolInfo.status = 'completed'
                 toolInfo.query = event.item.action?.query
                 callbacks.onToolCallComplete?.(toolInfo)
-                
+
                 logInfo('Tool call completed with details', toolInfo)
               }
             }
@@ -473,7 +478,7 @@ export class OpenAIProvider implements AIProvider {
           case 'response.completed': {
             const event = chunk as any
             logInfo('Response completed', {
-              totalOutputItems: event.response?.output?.length,
+              totalOutputItems: event.response?.output,
               usage: event.response?.usage
             })
             break

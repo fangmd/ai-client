@@ -91,21 +91,10 @@ export class MessageHandler {
             }))
           }
 
-          // 返回消息和附件
+          // 返回消息和附件，直接使用 DbMessage 的分散工具调用字段
           const responseData: any = {
             ...message,
             attachments
-          }
-          
-          // 如果是工具调用消息，添加 toolCall 字段
-          if (message.contentType === 'tool_call') {
-            responseData.toolCall = {
-              itemId: message.toolItemId,
-              type: message.toolType,
-              status: message.toolStatus,
-              query: message.toolQuery,
-              outputIndex: message.toolOutputIndex
-            }
           }
           
           const response = responseSuccess(responseData)
@@ -183,23 +172,10 @@ export class MessageHandler {
                 }))
               : undefined
           
-          const result: any = {
+          return {
             ...msg,
             attachments
           }
-          
-          // 如果是工具调用消息，添加 toolCall 字段
-          if (msg.contentType === 'tool_call') {
-            result.toolCall = {
-              itemId: msg.toolItemId,
-              type: msg.toolType,
-              status: msg.toolStatus,
-              query: msg.toolQuery,
-              outputIndex: msg.toolOutputIndex
-            }
-          }
-          
-          return result
         })
 
         const response = responseSuccess(messagesWithAttachments)

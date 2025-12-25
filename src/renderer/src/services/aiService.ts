@@ -1,4 +1,11 @@
-import type { Message, AIConfig } from '@/types'
+import type { AIConfig, Attachment } from '@/types'
+
+// AI 服务使用的简化消息类型
+type AIMessage = {
+  role: 'user' | 'assistant' | 'system' | 'tool'
+  content: string
+  attachments?: Attachment[]
+}
 
 export interface StreamOptions {
   onChunk?: (chunk: string) => void
@@ -15,7 +22,7 @@ export class AIService {
   }
 
   async streamChat(
-    messages: Omit<Message, 'id' | 'timestamp'>[],
+    messages: AIMessage[],
     options: StreamOptions = {}
   ): Promise<void> {
     if (!this.config) {
@@ -41,7 +48,7 @@ export class AIService {
   }
 
   private async streamOpenAI(
-    messages: Omit<Message, 'id' | 'timestamp'>[],
+    messages: AIMessage[],
     options: StreamOptions
   ): Promise<void> {
     const { onChunk, onDone, onError, abortSignal } = options
@@ -112,7 +119,7 @@ export class AIService {
   }
 
   private async streamAnthropic(
-    messages: Omit<Message, 'id' | 'timestamp'>[],
+    messages: AIMessage[],
     options: StreamOptions
   ): Promise<void> {
     const { onChunk, onDone, onError, abortSignal } = options

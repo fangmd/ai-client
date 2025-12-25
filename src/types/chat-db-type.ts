@@ -7,7 +7,6 @@ import type {
   ToolCallStatus, 
   AttachmentType,
   Attachment,
-  Message,
   AIConfig,
   ToolCallInfo
 } from './chat-frontend-type'
@@ -137,30 +136,31 @@ export interface IpcChatSession {
 }
 
 /**
- * IPC 传输的 Message 类型
+ * 扩展的 DbMessage 类型（用于 IPC 传输和前端存储）
+ * 包含 attachments，且 Date 字段序列化为 string
+ * 直接使用 DbMessage 中的分散工具调用字段，不转换为 toolCall 对象
  */
-export interface IpcMessage {
-  id: bigint
-  sessionId: bigint
-  role: 'user' | 'assistant' | 'system' | 'tool'
-  content: string
+export type DbMessageWithAttachments = Omit<DbMessage, 'createdAt'> & {
   attachments?: Attachment[]  // 附件列表
-  status: 'sent' | 'pending' | 'error' | null
-  totalTokens: number | null
-  createdAt: string
-  
-  // 工具调用相关字段
-  contentType?: MessageContentType  // 内容类型，默认 'text'
-  toolCall?: ToolCallInfo          // 工具调用信息（仅当 contentType 为 'tool_call' 时）
+  createdAt: string  // Date 序列化为 ISO string
 }
 
 // ==================== Chat 相关 IPC 请求类型 ====================
 
 /**
+ * AI Provider 使用的简化消息类型（只需要 role 和 content）
+ */
+export type AIMessageInput = {
+  role: 'user' | 'assistant' | 'system' | 'tool'
+  content: string
+  attachments?: Attachment[]
+}
+
+/**
  * AI 流式聊天请求参数
  */
 export interface StreamChatRequest {
-  messages: Omit<Message, 'id' | 'timestamp'>[]
+  messages: AIMessageInput[]
   config: AIConfig
   requestId: string
   sessionId: bigint

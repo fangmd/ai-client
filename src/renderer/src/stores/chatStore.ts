@@ -3,7 +3,7 @@ import type { AIConfig, Attachment } from '@/types'
 import type {
   IPCResponse,
   IpcChatSession,
-  IpcMessage
+  DbMessageWithAttachments
 } from '@/types'
 import { IPC_CHANNELS, SUCCESS_CODE } from '@/common/constants/ipc'
 
@@ -12,7 +12,7 @@ interface ChatState {
   currentSessionId: bigint | null
   currentAiProviderId: bigint | null // 当前使用的 AI Provider ID
   sessions: IpcChatSession[]
-  messages: IpcMessage[]
+  messages: DbMessageWithAttachments[]
 
   // AI 配置
   config: AIConfig | null
@@ -53,7 +53,7 @@ interface ChatState {
         outputIndex?: number
       }
     }
-  ) => Promise<IpcMessage | null>
+  ) => Promise<DbMessageWithAttachments | null>
   updateMessage: (id: bigint, data: { 
     content?: string
     status?: 'sent' | 'pending' | 'error'
@@ -70,8 +70,8 @@ interface ChatState {
   setIsSending: (isSending: boolean) => void
 
   // Actions - 本地消息操作（用于流式响应时的实时更新）
-  addLocalMessage: (message: IpcMessage) => void
-  updateLocalMessage: (id: bigint, updates: Partial<IpcMessage>) => void
+  addLocalMessage: (message: DbMessageWithAttachments) => void
+  updateLocalMessage: (id: bigint, updates: Partial<DbMessageWithAttachments>) => void
   appendToLocalMessage: (id: bigint, content: string) => void
 
   // Actions - 流式消息控制
@@ -125,7 +125,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const response = (await window.electron.ipcRenderer.invoke(
         IPC_CHANNELS.chatSession.get,
         { id }
-      )) as IPCResponse<IpcChatSession & { messages: IpcMessage[] }>
+      )) as IPCResponse<IpcChatSession & { messages: DbMessageWithAttachments[] }>
 
       if (response.code === SUCCESS_CODE && response.data) {
         set({
@@ -232,7 +232,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           contentType: message.contentType,
           toolCall: message.toolCall
         }
-      )) as IPCResponse<IpcMessage>
+      )) as IPCResponse<DbMessageWithAttachments>
 
       if (response.code === SUCCESS_CODE && response.data) {
         const newMessage = response.data
@@ -258,7 +258,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const response = (await window.electron.ipcRenderer.invoke(
         IPC_CHANNELS.message.update,
         { id, data }
-      )) as IPCResponse<IpcMessage>
+      )) as IPCResponse<DbMessageWithAttachments>
 
       if (response.code === SUCCESS_CODE && response.data) {
         set((state) => ({
@@ -280,7 +280,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const response = (await window.electron.ipcRenderer.invoke(
         IPC_CHANNELS.message.append,
         { id, content }
-      )) as IPCResponse<IpcMessage>
+      )) as IPCResponse<DbMessageWithAttachments>
 
       if (response.code === SUCCESS_CODE && response.data) {
         set((state) => ({

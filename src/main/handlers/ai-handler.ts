@@ -3,7 +3,7 @@ import { IPC_CHANNELS } from '@/common/constants'
 import { responseSuccess, responseError } from '@/common/response'
 import { AIProviderFactory } from '@/main/providers'
 import { logInfo, logError, logDebug } from '@/main/utils'
-import type { Message, ToolCallInfo, StreamChatRequest, CancelChatRequest } from '@/types'
+import type { ToolCallInfo, StreamChatRequest, CancelChatRequest } from '@/types'
 import { createMessage, updateMessage } from '@/main/repository/message'
 
 /**
@@ -87,12 +87,12 @@ export class AIHandler {
                 
                 toolCallMessageIds.set(toolInfo.itemId, toolMessage.id)
                 
-                // 通知前端工具调用开始
+                // 通知前端工具调用开始，直接使用 DbMessage
                 event.sender.send(IPC_CHANNELS.ai.toolCallStart, {
                   requestId,
                   toolInfo,
                   messageId: toolMessage.id.toString(),
-                  message: mapDbMessageToMessage(toolMessage)
+                  message: toolMessage
                 })
                 
                 logInfo('【IPC Handler】Tool call started and message created', {
@@ -119,7 +119,7 @@ export class AIHandler {
                     requestId,
                     toolInfo,
                     messageId: messageId.toString(),
-                    message: mapDbMessageToMessage(updatedMessage)
+                    message: updatedMessage
                   })
                   
                   logDebug('【IPC Handler】Tool call progress updated', {
@@ -149,7 +149,7 @@ export class AIHandler {
                     requestId,
                     toolInfo,
                     messageId: messageId.toString(),
-                    message: mapDbMessageToMessage(updatedMessage)
+                    message: updatedMessage
                   })
                   
                   logInfo('【IPC Handler】Tool call completed and message updated', {
@@ -266,23 +266,3 @@ function getToolCallCompleteMessage(toolInfo: ToolCallInfo): string {
   }
 }
 
-/**
- * 映射数据库消息到前端消息类型
- */
-function mapDbMessageToMessage(dbMessage: any): Message {
-  return {
-    id: dbMessage.id,
-    role: dbMessage.role,
-    content: dbMessage.content,
-    timestamp: dbMessage.createdAt.getTime(),
-    status: dbMessage.status === 'sent' ? 'done' : dbMessage.status === 'pending' ? 'sending' : 'error',
-    contentType: dbMessage.contentType,
-    toolCall: dbMessage.contentType === 'tool_call' ? {
-      itemId: dbMessage.toolItemId,
-      type: dbMessage.toolType,
-      status: dbMessage.toolStatus,
-      query: dbMessage.toolQuery,
-      outputIndex: dbMessage.toolOutputIndex
-    } : undefined
-  }
-}

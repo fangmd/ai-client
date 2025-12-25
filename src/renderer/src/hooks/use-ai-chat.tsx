@@ -210,12 +210,13 @@ export const useAIChat = ({ config, defaultProviderId }: UseAIChatOptions) => {
       IPC_CHANNELS.ai.toolCallProgress,
       (_event, data: { requestId: string; messageId: string; message: any }) => {
         if (data.requestId === requestId && data.message) {
-          // 更新本地消息状态
+          // 更新本地消息状态，使用分散的工具调用字段
           const messageId = BigInt(data.messageId)
           const { updateLocalMessage } = useChatStore.getState()
           updateLocalMessage(messageId, {
             content: data.message.content,
-            toolCall: data.message.toolCall
+            toolStatus: data.message.toolStatus,
+            toolQuery: data.message.toolQuery
           })
         }
       }
@@ -227,13 +228,14 @@ export const useAIChat = ({ config, defaultProviderId }: UseAIChatOptions) => {
       IPC_CHANNELS.ai.toolCallComplete,
       (_event, data: { requestId: string; messageId: string; message: any }) => {
         if (data.requestId === requestId && data.message) {
-          // 更新本地消息状态
+          // 更新本地消息状态，使用分散的工具调用字段
           const messageId = BigInt(data.messageId)
           const { updateLocalMessage } = useChatStore.getState()
           updateLocalMessage(messageId, {
             content: data.message.content,
             status: 'sent',
-            toolCall: data.message.toolCall
+            toolStatus: data.message.toolStatus,
+            toolQuery: data.message.toolQuery
           })
         }
       }

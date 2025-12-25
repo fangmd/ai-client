@@ -6,17 +6,16 @@ import { Check, Copy } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import copy from 'copy-to-clipboard'
 import { useState } from 'react'
-import type { Message } from '@/types'
+import type { DbMessageWithAttachments } from '@/types'
 import { ToolCallItem } from './tool-call-item'
-import { logDebug } from '@/renderer/src/utils'
 interface Props {
-  message: Message
+  message: DbMessageWithAttachments
 }
 
 export const MessageItem: React.FC<Props> = ({ message }) => {
   const [isCopied, setIsCopied] = useState(false)
 
-  logDebug('【MessageItem】message:', message)
+  // logDebug('【MessageItem】message:', message)
   
   // 工具调用消息
   if (message.contentType === 'tool_call') {

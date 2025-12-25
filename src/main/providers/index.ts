@@ -1,4 +1,4 @@
-import type { Message, AIConfig, ToolCallInfo } from '@/types'
+import type { AIMessageInput, AIConfig, ToolCallInfo } from '@/types'
 import { OpenAIProvider } from './openai-provider'
 
 /**
@@ -35,7 +35,7 @@ export interface AIProvider {
    * @param options 可选参数，包括工具列表
    */
   streamChat(
-    messages: Omit<Message, 'id' | 'timestamp'>[],
+    messages: AIMessageInput[],
     config: AIConfig,
     callbacks: StreamCallbacks,
     abortSignal?: AbortSignal,

@@ -1,21 +1,24 @@
 import { Globe, FolderSearch, Loader2, CheckCircle2, XCircle, Wrench } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
-import type { Message } from '@/types'
+import type { DbMessageWithAttachments } from '@/types'
 import { cn } from '@renderer/lib/utils'
 
 interface ToolCallItemProps {
-  message: Message
+  message: DbMessageWithAttachments
 }
 
 export function ToolCallItem({ message }: ToolCallItemProps) {
-  const { toolCall } = message
+  // 使用分散的工具调用字段
+  if (message.contentType !== 'tool_call' || !message.toolType) return null
 
-  if (!toolCall) return null
+  const toolType = message.toolType as 'web_search' | 'file_search'
+  const toolStatus = message.toolStatus as 'in_progress' | 'searching' | 'completed' | 'failed' | null
+  const toolQuery = message.toolQuery || undefined
 
   // 获取工具图标组件
   const getToolIcon = () => {
     const iconClass = 'w-4 h-4'
-    switch (toolCall.type) {
+    switch (toolType) {
       case 'web_search':
         return <Globe className={iconClass} />
       case 'file_search':
@@ -27,7 +30,7 @@ export function ToolCallItem({ message }: ToolCallItemProps) {
 
   // 获取状态颜色
   const getStatusColor = () => {
-    switch (toolCall.status) {
+    switch (toolStatus) {
       case 'in_progress':
       case 'searching':
         return 'text-blue-500'
@@ -42,7 +45,7 @@ export function ToolCallItem({ message }: ToolCallItemProps) {
 
   // 获取工具名称
   const getToolName = () => {
-    switch (toolCall.type) {
+    switch (toolType) {
       case 'web_search':
         return '网络搜索'
       case 'file_search':
@@ -54,7 +57,7 @@ export function ToolCallItem({ message }: ToolCallItemProps) {
 
   // 获取状态文本
   const getStatusText = () => {
-    switch (toolCall.status) {
+    switch (toolStatus) {
       case 'in_progress':
         return '准备中'
       case 'searching':
@@ -76,10 +79,10 @@ export function ToolCallItem({ message }: ToolCallItemProps) {
         <span className="font-medium text-background">{getToolName()}</span>
         <span className={cn('text-xs', getStatusColor())}>{getStatusText()}</span>
       </div>
-      {toolCall.query && (
+      {toolQuery && (
         <div className="text-xs text-background/80 pt-1 border-t border-background/20">
           <span className="font-medium">查询：</span>
-          <span className="ml-1">{toolCall.query}</span>
+          <span className="ml-1">{toolQuery}</span>
         </div>
       )}
     </div>
@@ -88,7 +91,7 @@ export function ToolCallItem({ message }: ToolCallItemProps) {
   // 获取状态图标（用于小图标显示）
   const statusIcon = () => {
     const iconClass = cn('w-3.5 h-3.5', getStatusColor())
-    switch (toolCall.status) {
+    switch (toolStatus) {
       case 'in_progress':
       case 'searching':
         return <Loader2 className={cn(iconClass, 'animate-spin')} />

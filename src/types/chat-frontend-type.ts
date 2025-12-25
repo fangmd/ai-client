@@ -55,22 +55,6 @@ export interface Attachment {
 }
 
 /**
- * 消息类型（前端）
- */
-export interface Message {
-  id: bigint
-  role: MessageRole
-  content: string
-  timestamp: number
-  status?: MessageStatus
-  attachments?: Attachment[]  // 附件列表
-  
-  // 工具调用相关字段
-  contentType?: MessageContentType  // 内容类型，默认 'text'
-  toolCall?: ToolCallInfo          // 工具调用信息（仅当 contentType 为 'tool_call' 时）
-}
-
-/**
  * AI 配置类型（前端）
  */
 export interface AIConfig {

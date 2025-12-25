@@ -164,21 +164,16 @@ export const Chat: React.FC = () => {
     scrollToBottom()
   }
 
-  // 转换消息格式用于 MessageItem 组件
+  // 直接使用 DbMessageWithAttachments，只转换 status 和 timestamp
   const displayMessages = messages.map((msg) => ({
-    id: msg.id,
-    role: msg.role,
-    content: msg.content,
-    attachments: msg.attachments,
+    ...msg,
     timestamp: new Date(msg.createdAt).getTime(),
     status:
       msg.status === 'pending'
         ? ('sending' as const)
         : msg.status === 'error'
           ? ('error' as const)
-          : ('done' as const),
-    contentType: msg.contentType,
-    toolCall: msg.toolCall
+          : ('done' as const)
   }))
 
   return (
