@@ -3,7 +3,7 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { registerHandlers, unregisterHandlers } from './handlers'
-import { initializeDatabase, configureSqliteOptimizations } from './common/db/prisma'
+import { initializeDatabase, disconnectDatabase } from './common/db/prisma'
 import { initializeLogger, logError, logInfo } from './utils'
 ;(BigInt.prototype as any).toJSON = function () {
   return this.toString()
@@ -45,49 +45,72 @@ function createWindow(): void {
   }
 }
 
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
-app.whenReady().then(async () => {
-  // Set app user model id for windows
-  electronApp.setAppUserModelId('com.electron')
+// 请求单实例锁，防止多个应用实例同时运行导致数据库冲突
+const gotTheLock = app.requestSingleInstanceLock()
 
-  logInfo('initialize app')
-  // 初始化日志
-  initializeLogger(app.getPath('userData'))
-  logInfo('initialize logger success')
-
-  logInfo('initialize database', Date.now())
-  // 初始化数据库
-  try {
-    // TODO: 优化性能，数据库初始化慢
-    await initializeDatabase()
-    logInfo('initialize database success', Date.now())
-
-    // 配置 SQLite 性能优化（WAL 模式等）
-    await configureSqliteOptimizations()
-  } catch (error) {
-    logError('Failed to initialize database:', error)
-  }
-
-  // Default open or close DevTools by F12 in development
-  // and ignore CommandOrControl + R in production.
-  // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
-  app.on('browser-window-created', (_, window) => {
-    optimizer.watchWindowShortcuts(window)
+if (!gotTheLock) {
+  // 如果已有实例在运行，退出当前实例
+  logInfo('Another instance is already running, exiting...')
+  app.quit()
+} else {
+  // 当用户尝试启动第二个实例时，聚焦到第一个实例的窗口
+  app.on('second-instance', () => {
+    const windows = BrowserWindow.getAllWindows()
+    if (windows.length > 0) {
+      const mainWindow = windows[0]
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.focus()
+    }
   })
 
-  // 注册所有 IPC Handlers
-  registerHandlers()
+  // This method will be called when Electron has finished
+  // initialization and is ready to create browser windows.
+  // Some APIs can only be used after this event occurs.
+  app.whenReady().then(async () => {
+    // Set app user model id for windows
+    electronApp.setAppUserModelId('com.electron')
 
-  createWindow()
+    logInfo('Initializing app...')
 
-  app.on('activate', function () {
-    // On macOS it's common to re-create a window in the app when the
-    // dock icon is clicked and there are no other windows open.
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    // 第一步：初始化日志
+    initializeLogger(app.getPath('userData'))
+    logInfo('Logger initialized')
+
+    // 第二步：初始化数据库（包括迁移和配置）
+    // 必须在注册 handlers 之前完成，避免 handlers 访问未初始化的数据库
+    try {
+      logInfo('Initializing database...')
+      const startTime = Date.now()
+      await initializeDatabase()
+      const duration = Date.now() - startTime
+      logInfo(`Database initialized successfully in ${duration}ms`)
+    } catch (error) {
+      logError('Failed to initialize database:', error)
+      // 数据库初始化失败是致命错误，但仍然继续运行以便用户看到错误信息
+    }
+
+    // Default open or close DevTools by F12 in development
+    // and ignore CommandOrControl + R in production.
+    // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
+    app.on('browser-window-created', (_, window) => {
+      optimizer.watchWindowShortcuts(window)
+    })
+
+    // 第三步：注册所有 IPC Handlers（现在可以安全访问数据库了）
+    logInfo('Registering handlers...')
+    registerHandlers()
+    logInfo('Handlers registered')
+
+    // 第四步：创建窗口
+    createWindow()
+
+    app.on('activate', function () {
+      // On macOS it's common to re-create a window in the app when the
+      // dock icon is clicked and there are no other windows open.
+      if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    })
   })
-})
+}
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
@@ -98,9 +121,10 @@ app.on('window-all-closed', () => {
   }
 })
 
-// 应用退出前清理 IPC Handlers
-app.on('will-quit', () => {
+// 应用退出前清理 IPC Handlers 和数据库连接
+app.on('will-quit', async () => {
   unregisterHandlers()
+  await disconnectDatabase()
 })
 
 // In this file you can include the rest of your app's specific main process
