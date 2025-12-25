@@ -178,9 +178,7 @@ export const AiModelDialog: React.FC<AiModelDialogProps> = ({
 
           {/* API Key */}
           <div className="grid gap-2">
-            <Label htmlFor="apiKey">
-              API Key {isEditMode ? '(留空不修改)' : '*'}
-            </Label>
+            <Label htmlFor="apiKey">API Key {isEditMode ? '(留空不修改)' : '*'}</Label>
             <Input
               id="apiKey"
               type="password"
@@ -221,7 +219,7 @@ export const AiModelDialog: React.FC<AiModelDialogProps> = ({
             <div className="flex items-center gap-2">
               <Checkbox
                 id="useTemperature"
-                checked={formData.temperature !== undefined}
+                checked={!!formData.temperature}
                 onCheckedChange={(checked) =>
                   setFormData({
                     ...formData,
