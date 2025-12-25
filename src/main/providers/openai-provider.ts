@@ -111,18 +111,23 @@ export class OpenAIProvider implements AIProvider {
 
       // 创建流式请求
       logDebug('Creating stream request to OpenAI API')
-      const stream = await client.chat.completions.create(
-        {
-          model: config.model,
-          messages: openaiMessages,
-          stream: true,
-          temperature: config.temperature ?? 0.7,
-          max_completion_tokens: config.maxTokens
-        },
-        {
-          signal: abortSignal
-        }
-      )
+      
+      // 构建请求参数（只传递明确设置的参数，避免某些模型不支持的参数）
+      const requestParams = {
+        model: config.model,
+        messages: openaiMessages,
+        stream: true as const,
+        ...(config.temperature !== undefined && config.temperature !== null
+          ? { temperature: config.temperature }
+          : {}),
+        ...(config.maxTokens !== undefined && config.maxTokens !== null
+          ? { max_completion_tokens: config.maxTokens }
+          : {})
+      }
+
+      const stream = await client.chat.completions.create(requestParams, {
+        signal: abortSignal
+      })
 
       logDebug('Stream connection established, starting to process chunks')
       let chunkCount = 0

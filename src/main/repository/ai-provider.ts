@@ -63,9 +63,16 @@ export async function getAiProvidersByType(provider: string) {
  * 更新 AI Provider
  */
 export async function updateAiProvider(id: bigint, data: UpdateAiProviderData) {
+  // 将 temperature 的 undefined 转换为 null，确保 Prisma 正确更新字段
+  // （Prisma 会忽略 undefined 值，但会更新 null 值）
+  const updateData = {
+    ...data,
+    temperature: data.temperature === undefined ? null : data.temperature
+  }
+
   return prisma.aiProvider.update({
     where: { id },
-    data
+    data: updateData
   })
 }
 

@@ -36,7 +36,7 @@ const defaultFormData: CreateAiProviderData = {
   apiKey: '',
   baseURL: '',
   model: 'gpt-3.5-turbo',
-  temperature: 0.7,
+  temperature: undefined, // 默认不设置，使用 API 默认值
   maxTokens: 2000,
   organization: '',
   isDefault: false
@@ -61,7 +61,7 @@ export const AiModelDialog: React.FC<AiModelDialogProps> = ({
         apiKey: '', // 编辑模式下不显示原 API Key
         baseURL: editProvider.baseURL || '',
         model: editProvider.model,
-        temperature: editProvider.temperature ?? 0.7,
+        temperature: editProvider.temperature, // 保持原值（可能是 undefined）
         maxTokens: editProvider.maxTokens ?? 2000,
         organization: editProvider.organization || '',
         isDefault: editProvider.isDefault
@@ -218,15 +218,35 @@ export const AiModelDialog: React.FC<AiModelDialogProps> = ({
 
           {/* Temperature */}
           <div className="grid gap-2">
-            <Label htmlFor="temperature">Temperature: {formData.temperature}</Label>
-            <Slider
-              id="temperature"
-              min={0}
-              max={2}
-              step={0.1}
-              value={[formData.temperature || 0.7]}
-              onValueChange={([value]) => setFormData({ ...formData, temperature: value })}
-            />
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="useTemperature"
+                checked={formData.temperature !== undefined}
+                onCheckedChange={(checked) =>
+                  setFormData({
+                    ...formData,
+                    temperature: checked === true ? 0.7 : undefined
+                  })
+                }
+              />
+              <Label htmlFor="useTemperature" className="cursor-pointer">
+                自定义 Temperature
+                {formData.temperature !== undefined && `: ${formData.temperature}`}
+              </Label>
+            </div>
+            {formData.temperature !== undefined && formData.temperature !== null && (
+              <Slider
+                id="temperature"
+                min={0}
+                max={2}
+                step={0.1}
+                value={[formData.temperature]}
+                onValueChange={([value]) => setFormData({ ...formData, temperature: value })}
+              />
+            )}
+            <p className="text-xs text-muted-foreground">
+              不勾选时使用 API 默认值（某些模型如 codex 不支持自定义）
+            </p>
           </div>
 
           {/* Max Tokens */}

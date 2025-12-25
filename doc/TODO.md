@@ -6,7 +6,7 @@
 
 ## 小问题
 
-- [ ] Error: OpenAI API error: 400 Unsupported parameter: 'temperature' is not supported with this model. gpt-5.1-codex
+- [x] Error: OpenAI API error: 400 Unsupported parameter: 'temperature' is not supported with this model. gpt-5.1-codex
 - [ ] 聊天界面滚动到底部功能不稳定
 
 ## 待开发
