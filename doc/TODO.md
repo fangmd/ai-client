@@ -4,6 +4,12 @@
 
 - [x] chat 支持上传文件 (设计文档 → [04.FILE_UPLOAD_DESIGN.md](./04.FILE_UPLOAD_DESIGN.md))
 - [x] 数据库初始化流程优化 - 解决 SQLite 锁定问题 (设计文档 → [05.DATABASE_INITIALIZATION_DESIGN.md](./05.DATABASE_INITIALIZATION_DESIGN.md))
+- [x] 工具调用消息显示功能 (设计文档 → [07.TOOL_CALL_DISPLAY_DESIGN.md](./07.TOOL_CALL_DISPLAY_DESIGN.md))
+  - [x] 阶段一：基础工具调用显示
+  - [x] 阶段二：实时状态更新
+  - [x] 阶段三：UI 实现和优化
+  - [x] 阶段四：测试和完善
+- [x] tools support openai 内置 tools web_search
 
 ## 小问题
 
@@ -13,15 +19,13 @@
 
 ## 待开发
 
-- [ ] 工具调用消息显示功能 (设计文档 → [07.TOOL_CALL_DISPLAY_DESIGN.md](./07.TOOL_CALL_DISPLAY_DESIGN.md))
-  - [ ] 阶段一：基础工具调用显示
-  - [ ] 阶段二：实时状态更新
-  - [ ] 阶段三：UI 实现和优化
-  - [ ] 阶段四：测试和完善
-- [ ] tools support openai 内置 tools
+
 - [ ] tools support 客户端 自定义 tools
 - [ ] 增加 project 概念
 - [ ] memory
 - [ ] 支持 claude 模型
 - [ ] 支持 gemini 模型
 - [ ] chat-input 输入框自定义 cursor，优化UI
+- [ ] tools support openai 内置 tools file_search
+
+
