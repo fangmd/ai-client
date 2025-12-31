@@ -25,13 +25,19 @@ export class AIHandler {
     ipcMain.on(IPC_CHANNELS.ai.streamChat, async (event, request: StreamChatRequest) => {
       const { messages, config, requestId, tools, sessionId } = request
 
+      // 默认启用 terminal 工具
+      const finalTools: string[] = tools ? [...tools] : []
+      if (!finalTools.includes('terminal')) {
+        finalTools.push('terminal')
+      }
+
       logInfo('【IPC Handler】ai:streamChat called, params:', {
         requestId,
         sessionId,
         messagesCount: messages.length,
         provider: config.provider,
         model: config.model,
-        tools: tools || []
+        tools: finalTools
       })
 
       try {
@@ -149,15 +155,25 @@ export class AIHandler {
             },
 
             // 工具调用完成
-            onToolCallComplete: async (toolInfo: ToolCallInfo) => {
+            onToolCallComplete: async (toolInfo: ToolCallInfo, resultContent?: string) => {
               const messageId = toolCallMessageIds.get(toolInfo.itemId)
               if (messageId) {
                 try {
+                  // 对于终端工具，使用 command 字段；对于其他工具，使用 query 字段
+                  const toolQuery = toolInfo.type === 'terminal' 
+                    ? toolInfo.command 
+                    : toolInfo.query
+                  
+                  // 对于终端工具，如果有执行结果，使用执行结果作为内容；否则使用完成消息
+                  const content = toolInfo.type === 'terminal' && resultContent
+                    ? resultContent
+                    : getToolCallCompleteMessage(toolInfo)
+                  
                   const updatedMessage = await updateMessage(messageId, {
-                    content: getToolCallCompleteMessage(toolInfo),
+                    content,
                     status: 'sent',
                     toolStatus: toolInfo.status,
-                    toolQuery: toolInfo.query
+                    toolQuery
                   })
                   
                   // 通知前端工具调用完成
@@ -198,7 +214,7 @@ export class AIHandler {
             }
           },
           abortController.signal,
-          tools ? { tools } : undefined
+          { tools: finalTools as any }
         )
       } catch (error) {
         logError('【IPC Handler】ai:streamChat exception, requestId:', requestId, 'error:', error)
@@ -255,6 +271,8 @@ function getToolCallStartMessage(toolInfo: ToolCallInfo): string {
       return '🔍 正在搜索网络...'
     case 'file_search':
       return '📁 正在搜索文件...'
+    case 'terminal':
+      return '💻 正在执行终端命令...'
     default:
       return '⚙️ 正在执行工具调用...'
   }
@@ -272,14 +290,20 @@ function getToolCallProgressMessage(toolInfo: ToolCallInfo): string {
 }
 
 function getToolCallCompleteMessage(toolInfo: ToolCallInfo): string {
-  const query = toolInfo.query ? `\n查询：${toolInfo.query}` : ''
   switch (toolInfo.type) {
     case 'web_search':
-      return `✅ 网络搜索完成${query}`
-    case 'file_search':
-      return `✅ 文件搜索完成${query}`
+    case 'file_search': {
+      const query = toolInfo.query ? `\n查询：${toolInfo.query}` : ''
+      return toolInfo.type === 'web_search' 
+        ? `✅ 网络搜索完成${query}`
+        : `✅ 文件搜索完成${query}`
+    }
+    case 'terminal': {
+      const command = toolInfo.command ? `\n命令：${toolInfo.command}` : ''
+      return `✅ 终端命令执行完成${command}`
+    }
     default:
-      return `✅ 工具调用完成${query}`
+      return '✅ 工具调用完成'
   }
 }
 

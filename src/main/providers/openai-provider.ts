@@ -1,8 +1,4 @@
 import OpenAI from 'openai'
-import type {
-  ChatCompletionContentPart,
-  ChatCompletionMessageParam
-} from 'openai/resources/chat/completions'
 import type { AIMessageInput, AIConfig, ToolCallInfo } from '@/types'
 import type { AIProvider, ToolType, StreamCallbacks } from './index'
 import { logInfo, logError, logDebug, logWarn } from '../utils/logger'
@@ -11,6 +7,8 @@ import {
   ResponseTextDeltaEvent,
   ResponseContentPartAddedEvent
 } from 'openai/resources/responses/responses.mjs'
+import { terminalToolDefinitionForResponsesAPI } from './tools/terminal-tool'
+import { executeTerminalCommand } from '../utils/tool-executor'
 
 /**
  * OpenAI Provider 实现
@@ -95,11 +93,14 @@ export class OpenAIProvider implements AIProvider {
     })
 
     try {
-      if (useResponsesAPI) {
-        await this.streamChatWithResponsesAPI(messages, config, callbacks, abortSignal, tools)
-      } else {
-        await this.streamChatWithCompletionsAPI(messages, config, callbacks, abortSignal)
-      }
+      await this.streamChatWithResponsesAPI(
+        messages,
+        config,
+        callbacks,
+        abortSignal,
+        tools,
+        options
+      )
     } catch (error) {
       // 如果是取消错误，不调用 onError
       if (error instanceof Error && error.name === 'AbortError') {
@@ -119,121 +120,6 @@ export class OpenAIProvider implements AIProvider {
   }
 
   /**
-   * 使用 Chat Completions API 进行流式聊天
-   */
-  private async streamChatWithCompletionsAPI(
-    messages: AIMessageInput[],
-    config: AIConfig,
-    callbacks: StreamCallbacks,
-    abortSignal?: AbortSignal
-  ): Promise<void> {
-    try {
-      // 创建 OpenAI 客户端
-      logDebug('Creating OpenAI client', {
-        baseURL: config.baseURL || 'default',
-        hasOrganization: !!config.openai?.organization
-      })
-      const client = new OpenAI({
-        apiKey: config.apiKey,
-        baseURL: config.baseURL,
-        organization: config.openai?.organization
-      })
-
-      // 转换消息格式（支持 Vision API）
-      // 过滤掉 role 为 'tool' 的消息，这些消息不应该传给 AI
-      const openaiMessages: ChatCompletionMessageParam[] = messages
-        .filter((msg) => msg.role !== 'tool')
-        .map((msg) => {
-          const hasImageAttachments = msg.attachments?.some((a) => a.type === 'image')
-
-          // 有图片附件时，使用 Vision 格式（只有 user 角色支持多模态内容）
-          if (hasImageAttachments && msg.role === 'user') {
-            const content: ChatCompletionContentPart[] = []
-
-            // 添加文本内容
-            if (msg.content) {
-              content.push({ type: 'text', text: msg.content })
-            }
-
-            // 添加图片
-            msg.attachments
-              ?.filter((a) => a.type === 'image')
-              .forEach((a) => {
-                content.push({
-                  type: 'image_url',
-                  image_url: {
-                    url: `data:${a.mimeType};base64,${a.data}`,
-                    detail: 'auto'
-                  }
-                })
-              })
-
-            return {
-              role: 'user' as const,
-              content
-            }
-          }
-
-          // 无附件或非 user 角色，使用普通格式
-          return {
-            role: msg.role,
-            content: msg.content
-          } as ChatCompletionMessageParam
-        })
-
-      // 创建流式请求
-      logDebug('Creating stream request to OpenAI API')
-
-      // 构建请求参数（只传递明确设置的参数，避免某些模型不支持的参数）
-      const requestParams = {
-        model: config.model,
-        messages: openaiMessages,
-        stream: true as const,
-        ...(config.temperature !== undefined && config.temperature !== null
-          ? { temperature: config.temperature }
-          : {}),
-        ...(config.maxTokens !== undefined && config.maxTokens !== null
-          ? { max_completion_tokens: config.maxTokens }
-          : {})
-      }
-
-      const stream = await client.chat.completions.create(requestParams, {
-        signal: abortSignal
-      })
-
-      logDebug('Stream connection established, starting to process chunks')
-      let chunkCount = 0
-
-      // 处理流式响应
-      for await (const chunk of stream) {
-        // 检查是否已取消
-        if (abortSignal?.aborted) {
-          logInfo('OpenAI stream chat cancelled by user')
-          return
-        }
-
-        // logDebug('OpenAI stream chat chunk received', {
-        //   chunk: chunk
-        // })
-
-        const content = chunk.choices[0]?.delta?.content
-        if (content) {
-          chunkCount++
-          callbacks.onChunk(content)
-        }
-      }
-
-      logInfo('OpenAI Chat Completions stream chat completed successfully', {
-        model: config.model,
-        totalChunks: chunkCount
-      })
-      callbacks.onDone()
-    } catch (error) {
-      throw error // 重新抛出，由外层处理
-    }
-  }
-
-  /**
    * 使用 Responses API 进行流式聊天
    */
   private async streamChatWithResponsesAPI(
@@ -241,7 +127,10 @@ export class OpenAIProvider implements AIProvider {
     config: AIConfig,
     callbacks: StreamCallbacks,
     abortSignal?: AbortSignal,
-    tools: ToolType[] = []
+    tools: ToolType[] = [],
+    options?: {
+      tools?: ToolType[]
+    }
   ): Promise<void> {
     try {
       // 创建 OpenAI 客户端
@@ -255,67 +144,100 @@ export class OpenAIProvider implements AIProvider {
         organization: config.openai?.organization
       })
 
-      // 转换消息格式（支持 Vision API）
-      // 过滤掉 role 为 'tool' 的消息，这些消息不应该传给 AI
-      const openaiMessages: ChatCompletionMessageParam[] = messages
-        .filter((msg) => msg.role !== 'tool')
-        .map((msg) => {
-          const hasImageAttachments = msg.attachments?.some((a) => a.type === 'image')
+      // 转换消息格式（支持 Vision API 和 Function Calling）
+      // Responses API 的 input 可以是字符串或 ResponseInputItem 数组
+      // 需要将 function_call_output 类型的消息转换为正确的格式
+      const openaiInput: any[] = []
 
-          // 有图片附件时，使用 Vision 格式（只有 user 角色支持多模态内容）
-          if (hasImageAttachments && msg.role === 'user') {
-            const content: ChatCompletionContentPart[] = []
+      for (const msg of messages) {
+        // 处理 function_call 消息（需要在 function_call_output 之前）
+        if ((msg as any)._functionCall) {
+          const functionCall = (msg as any)._functionCall
+          openaiInput.push(functionCall)
+          continue
+        }
 
-            // 添加文本内容
-            if (msg.content) {
-              content.push({ type: 'text', text: msg.content })
-            }
+        // 处理 function_call_output 消息
+        if ((msg as any)._functionCallOutput) {
+          const functionCallOutput = (msg as any)._functionCallOutput
+          openaiInput.push(functionCallOutput)
+          continue
+        }
 
-            // 添加图片
-            msg.attachments
-              ?.filter((a) => a.type === 'image')
-              .forEach((a) => {
-                content.push({
-                  type: 'image_url',
-                  image_url: {
-                    url: `data:${a.mimeType};base64,${a.data}`,
-                    detail: 'auto'
-                  }
-                })
-              })
+        // 过滤掉 role 为 'tool' 的消息（这些是 Chat Completions API 格式，Responses API 不使用）
+        if (msg.role === 'tool') {
+          continue
+        }
 
-            return {
-              role: 'user' as const,
-              content
-            }
+        // 处理普通消息（user, assistant, system）
+        const hasImageAttachments = msg.attachments?.some((a) => a.type === 'image')
+
+        // 有图片附件时，使用 Vision 格式（只有 user 角色支持多模态内容）
+        if (hasImageAttachments && msg.role === 'user') {
+          const content: any[] = []
+
+          // 添加文本内容
+          if (msg.content) {
+            content.push({ type: 'input_text', text: msg.content })
           }
 
-          // 无附件或非 user 角色，使用普通格式
-          return {
+          // 添加图片
+          msg.attachments
+            ?.filter((a) => a.type === 'image')
+            .forEach((a) => {
+              content.push({
+                type: 'input_image',
+                source: {
+                  type: 'base64',
+                  media_type: a.mimeType,
+                  data: a.data
+                }
+              })
+            })
+
+          openaiInput.push({
+            type: 'message',
+            role: 'user',
+            content
+          })
+        } else {
+          // 无附件或非 user 角色，使用 EasyInputMessage 格式
+          // Responses API 支持简化的消息格式：{ role, content }
+          openaiInput.push({
             role: msg.role,
             content: msg.content
-          } as ChatCompletionMessageParam
-        })
+          })
+        }
+      }
+
+      // Responses API 的 input 可以是字符串或 ResponseInputItem 数组
+      // 这里使用数组格式，包含所有消息和 function_call_output
+      const openaiMessages: any =
+        openaiInput.length === 1 && typeof openaiInput[0] === 'string'
+          ? openaiInput[0]
+          : openaiInput
 
       // 构建工具列表 - OpenAI Responses API 的 tools 参数格式为对象数组
       // web_search: { type: "web_search" }
       // file_search: { type: "file_search", vector_store_ids: [...] } (需要 vector_store_ids)
-      const toolsList = tools
-        .map((tool) => {
-          if (tool === 'web_search') {
-            return { type: 'web_search' as const }
-          }
-          if (tool === 'file_search') {
-            // file_search 需要 vector_store_ids，如果没有提供则跳过
-            // TODO: 未来可以从 options 中获取 vector_store_ids 配置
-            logWarn('file_search tool requires vector_store_ids, skipping', {
-              tool
-            })
-            return null
-          }
-          return { type: tool }
-        })
-        .filter((tool): tool is NonNullable<typeof tool> => tool !== null)
+      // Function Calling: { type: "function", function: {...} }
+      const toolsList: any[] = []
+
+      for (const tool of tools) {
+        if (tool === 'web_search') {
+          toolsList.push({ type: 'web_search' as const })
+        } else if (tool === 'file_search') {
+          // file_search 需要 vector_store_ids，如果没有提供则跳过
+          // TODO: 未来可以从 options 中获取 vector_store_ids 配置
+          logWarn('file_search tool requires vector_store_ids, skipping', {
+            tool
+          })
+        } else if (tool === 'terminal') {
+          // Function Calling 工具
+          // Responses API 使用 { type: 'function', name: string, ... } 格式
+          toolsList.push(terminalToolDefinitionForResponsesAPI)
+        }
+      }
 
       // 创建流式请求
       logDebug('Creating stream request to OpenAI Responses API', {
@@ -353,6 +275,13 @@ export class OpenAIProvider implements AIProvider {
 
       // 用于保存完整文本（当收到 done 事件时）
       let completeText: string | null = null
+
+      // 用于累积 Function Calling 参数
+      const functionCallArgsMap = new Map<string, string>()
+      // 用于保存 Function Calling 的 call_id（itemId -> call_id）
+      const functionCallIdMap = new Map<string, string>()
+      // 用于保存 Function Calling 的完整信息（itemId -> function_call object）
+      const functionCallMap = new Map<string, any>()
 
       // 处理流式响应
       for await (const chunk of stream) {
@@ -398,7 +327,41 @@ export class OpenAIProvider implements AIProvider {
               callbacks.onToolCallStart?.(toolInfo)
 
               logDebug('Tool call started', toolInfo)
+            } else if (event.item?.type === 'function_call') {
+              // Function Calling 工具调用
+              const callId = (event.item as any).call_id || event.item.id
+              const toolInfo: ToolCallInfo = {
+                itemId: event.item.id,
+                type: 'terminal',
+                status: 'in_progress',
+                outputIndex: event.output_index,
+                timestamp: Date.now()
+              }
+              toolCallsMap.set(event.item.id, toolInfo)
+              functionCallArgsMap.set(event.item.id, '')
+              functionCallIdMap.set(event.item.id, callId)
+              // 保存完整的 function_call 信息，用于后续递归调用
+              // 注意：arguments 必须是 JSON 字符串格式
+              functionCallMap.set(event.item.id, {
+                type: 'function_call' as const,
+                call_id: callId,
+                name: event.item.name,
+                arguments: '' // 将在 arguments.done 时更新为完整的 JSON 字符串
+              })
+              callbacks.onToolCallStart?.(toolInfo)
+
+              logDebug('Function call started', { toolInfo, callId })
             }
+            break
+          }
+
+          // 处理 Function Calling 参数增量
+          case 'response.function_call.arguments.delta': {
+            const event = chunk as any
+            const itemId = event.item_id
+            const delta = event.delta || ''
+            const currentArgs = functionCallArgsMap.get(itemId) || ''
+            functionCallArgsMap.set(itemId, currentArgs + delta)
             break
           }
 
@@ -445,12 +408,57 @@ export class OpenAIProvider implements AIProvider {
             const event = chunk as any
             if (event.item?.type === 'web_search_call' || event.item?.type === 'file_search_call') {
               const toolInfo = toolCallsMap.get(event.item.id)
-              if (toolInfo) {
+              if (toolInfo && (toolInfo.type === 'web_search' || toolInfo.type === 'file_search')) {
                 toolInfo.status = 'completed'
                 toolInfo.query = event.item.action?.query
                 callbacks.onToolCallComplete?.(toolInfo)
 
                 logInfo('Tool call completed with details', toolInfo)
+              }
+            } else if (event.item?.type === 'function_call') {
+              // Function Calling 完成，执行函数
+              const toolInfo = toolCallsMap.get(event.item.id)
+              const functionArgs =
+                functionCallArgsMap.get(event.item.id) || event.item.arguments || ''
+              const functionName = event.item.name
+              const callId =
+                functionCallIdMap.get(event.item.id) || (event.item as any).call_id || event.item.id
+
+              logDebug('[handleFunctionCall] Function calling completed', {
+                functionName,
+                functionArgs,
+                callId,
+                toolCallsMap
+              })
+
+              if (toolInfo && functionName === 'execute_terminal_command') {
+                // 更新保存的 function_call 信息，包含完整的 arguments
+                const savedFunctionCall = functionCallMap.get(event.item.id)
+                if (savedFunctionCall) {
+                  savedFunctionCall.arguments = functionArgs
+                }
+                
+                // 执行函数调用
+                await this.handleFunctionCall(
+                  { 
+                    name: functionName, 
+                    arguments: functionArgs, 
+                    callId,
+                    functionCallItem: savedFunctionCall || {
+                      type: 'function_call',
+                      call_id: callId,
+                      name: functionName,
+                      arguments: functionArgs
+                    }
+                  },
+                  toolInfo, // 传递已创建的 toolInfo，避免重复调用 onToolCallStart
+                  messages,
+                  config,
+                  callbacks,
+                  abortSignal,
+                  options || { tools }
+                )
+                return // 函数调用后会递归调用，这里直接返回
               }
             }
             break
@@ -527,4 +535,184 @@ export class OpenAIProvider implements AIProvider {
       throw error // 重新抛出，由外层处理
     }
   }
+
+  /**
+   * 处理 Function Calling
+   */
+  private async handleFunctionCall(
+    functionCall: { 
+      name: string; 
+      arguments: string; 
+      callId: string;
+      functionCallItem?: any; // 完整的 function_call 对象，用于递归调用时包含在 input 中
+    },
+    toolInfo: ToolCallInfo, // 已创建的 toolInfo，onToolCallStart 已在 response.output_item.added 中调用
+    messages: AIMessageInput[],
+    config: AIConfig,
+    callbacks: StreamCallbacks,
+    abortSignal?: AbortSignal,
+    options?: {
+      tools?: ToolType[]
+    }
+  ): Promise<void> {
+    if (functionCall.name === 'execute_terminal_command') {
+      logDebug('[handleFunctionCall] Handling execute_terminal_command function call', {
+        functionName: functionCall.name,
+        arguments: functionCall.arguments
+      })
+
+      try {
+        // 解析函数参数
+        logDebug('[handleFunctionCall] Parsing function call arguments', {
+          rawArguments: functionCall.arguments
+        })
+        const args = JSON.parse(functionCall.arguments)
+        const { command, workingDirectory } = args
+
+        logInfo('[handleFunctionCall] Terminal command execution started', {
+          command,
+          workingDirectory: workingDirectory || 'current directory',
+          messagesCount: messages.length
+        })
+
+        // 注意：onToolCallStart 已在 response.output_item.added 事件中调用，这里不需要重复调用
+        // 更新 toolInfo 的命令信息（用于后续的 onToolCallComplete）
+        // 由于 functionName === 'execute_terminal_command'，toolInfo 一定是 TerminalToolCallInfo 类型
+        if (toolInfo.type === 'terminal') {
+          toolInfo.command = command
+          toolInfo.workingDirectory = workingDirectory
+        }
+
+        logDebug('[handleFunctionCall] Tool call info updated', {
+          itemId: toolInfo.itemId,
+          command: toolInfo.type === 'terminal' ? toolInfo.command : undefined
+        })
+
+        // 执行命令
+        logDebug('[handleFunctionCall] Executing terminal command', {
+          command,
+          workingDirectory
+        })
+        const result = await executeTerminalCommand(command, workingDirectory)
+
+        logInfo('[handleFunctionCall] Terminal command execution completed', {
+          command: result.command,
+          workingDirectory: result.workingDirectory,
+          exitCode: result.exitCode,
+          executionTime: result.executionTime,
+          stdoutLength: result.stdout?.length || 0,
+          stderrLength: result.stderr?.length || 0,
+          hasError: !!result.error
+        })
+
+        logDebug('[handleFunctionCall] Terminal command execution result details', {
+          stdout: result.stdout,
+          stderr: result.stderr,
+          error: result.error
+        })
+
+        // 格式化命令结果
+        const formattedResult = formatCommandResult(result)
+
+        logDebug('[handleFunctionCall] Command result formatted', {
+          formattedResultLength: formattedResult.length
+        })
+
+        // 通知工具调用完成（包含执行结果，用于保存到消息内容）
+        const completedToolInfo: ToolCallInfo = {
+          ...toolInfo,
+          status: 'completed',
+          ...(toolInfo.type === 'terminal' ? {
+            command: result.command,
+            workingDirectory: result.workingDirectory
+          } : {})
+        }
+        // 注意：formattedResult 会作为 tool 消息传递给 AI
+        // 但工具调用消息的 content 需要在 Handler 中更新
+        callbacks.onToolCallComplete?.(completedToolInfo, formattedResult)
+
+        logDebug('[handleFunctionCall] Tool call completed notification sent', {
+          itemId: completedToolInfo.itemId,
+          status: completedToolInfo.status
+        })
+
+        // 构建 function_call_output 消息（Responses API 格式）
+        // 注意：Responses API 使用 function_call_output 类型，而不是 tool 角色
+        const functionCallOutput = {
+          type: 'function_call_output' as const,
+          call_id: functionCall.callId,
+          output: formattedResult
+        }
+
+        // 重要：在递归调用时，需要将对应的 function_call 也包含在 input 中
+        // 这样 API 才能找到对应的 tool call
+        if (functionCall.functionCallItem) {
+          messages.push({
+            role: 'user', // 临时使用，实际会在转换时处理
+            content: JSON.stringify(functionCall.functionCallItem),
+            // 添加标记，表示这是一个 function_call 消息
+            _functionCall: functionCall.functionCallItem
+          } as any)
+        }
+
+        // 将工具结果添加到消息列表（作为 ResponseInputItem）
+        // 注意：这里需要将 function_call_output 作为 input 的一部分传递
+        messages.push({
+          role: 'user', // 临时使用 user 角色，实际会在转换时处理
+          content: JSON.stringify(functionCallOutput),
+          // 添加标记，表示这是一个 function_call_output 消息
+          _functionCallOutput: functionCallOutput
+        } as any)
+
+        logDebug('[handleFunctionCall] Function call output added to messages list', {
+          messagesCount: messages.length,
+          callId: functionCall.callId,
+          outputLength: formattedResult.length
+        })
+
+        // 递归调用，让 AI 基于结果继续回复
+        logInfo('[handleFunctionCall] Recursively calling streamChat with tool result', {
+          updatedMessagesCount: messages.length,
+          model: config.model
+        })
+        await this.streamChat(messages, config, callbacks, abortSignal, options)
+      } catch (error) {
+        logError('[handleFunctionCall] Function call execution failed', {
+          functionName: functionCall.name,
+          arguments: functionCall.arguments,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          errorName: error instanceof Error ? error.name : 'Unknown',
+          stack: error instanceof Error ? error.stack : undefined
+        })
+        const errorMessage = error instanceof Error ? error.message : 'Function call failed'
+        callbacks.onError(new Error(`Terminal command execution failed: ${errorMessage}`))
+      }
+    }
+  }
+}
+
+/**
+ * 格式化命令执行结果
+ */
+function formatCommandResult(
+  result: import('../utils/tool-executor').CommandExecutionResult
+): string {
+  let output = `Command: ${result.command}\n`
+  output += `Working Directory: ${result.workingDirectory}\n`
+  output += `Exit Code: ${result.exitCode}\n`
+  output += `Execution Time: ${result.executionTime}ms\n\n`
+
+  if (result.stdout) {
+    output += `STDOUT:\n${result.stdout}\n\n`
+  }
+
+  if (result.stderr) {
+    output += `STDERR:\n${result.stderr}\n\n`
+  }
+
+  if (result.error) {
+    output += `ERROR: ${result.error}\n`
+  }
+
+  return output
 }

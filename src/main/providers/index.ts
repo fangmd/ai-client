@@ -4,7 +4,7 @@ import { OpenAIProvider } from './openai-provider'
 /**
  * 工具类型
  */
-export type ToolType = 'web_search' | 'file_search'
+export type ToolType = 'web_search' | 'file_search' | 'terminal'
 
 /**
  * 流式聊天回调接口
@@ -15,7 +15,7 @@ export interface StreamCallbacks {
   // 工具调用回调
   onToolCallStart?: (toolInfo: ToolCallInfo) => void      // 工具调用开始
   onToolCallProgress?: (toolInfo: ToolCallInfo) => void   // 工具调用进度
-  onToolCallComplete?: (toolInfo: ToolCallInfo) => void   // 工具调用完成
+  onToolCallComplete?: (toolInfo: ToolCallInfo, resultContent?: string) => void   // 工具调用完成，可选传递结果内容
   
   onDone: (completeText?: string) => void  // 完成回调，可选传递完整文本（用于替换之前累积的 delta）
   onError: (error: Error) => void

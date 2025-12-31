@@ -18,7 +18,7 @@ export type MessageContentType = 'text' | 'tool_call'
 /**
  * 工具类型
  */
-export type ToolType = 'web_search' | 'file_search'
+export type ToolType = 'web_search' | 'file_search' | 'terminal'
 
 /**
  * 工具调用状态
@@ -26,16 +26,31 @@ export type ToolType = 'web_search' | 'file_search'
 export type ToolCallStatus = 'in_progress' | 'searching' | 'completed' | 'failed'
 
 /**
+ * 终端工具调用信息
+ */
+export interface TerminalToolCallInfo {
+  itemId: string              // 工具调用的唯一标识
+  type: 'terminal'            // 工具类型
+  status: ToolCallStatus      // 当前状态
+  command?: string            // 执行的命令（完成时才有）
+  workingDirectory?: string   // 工作目录
+  outputIndex?: number        // 在输出中的索引位置
+  timestamp?: number           // 时间戳
+}
+
+/**
  * 工具调用信息
  */
-export interface ToolCallInfo {
-  itemId: string          // 工具调用的唯一标识
-  type: ToolType          // 工具类型
-  status: ToolCallStatus  // 当前状态
-  query?: string          // 搜索查询内容（完成时才有）
-  outputIndex?: number    // 在输出中的索引位置
-  timestamp?: number      // 时间戳
-}
+export type ToolCallInfo = 
+  | {
+      itemId: string
+      type: 'web_search' | 'file_search'
+      status: ToolCallStatus
+      query?: string
+      outputIndex?: number
+      timestamp?: number
+    }
+  | TerminalToolCallInfo
 
 /**
  * 附件类型
