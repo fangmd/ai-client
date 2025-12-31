@@ -131,13 +131,18 @@ function getMigrationsPath(): string {
 }
 
 /**
- * 执行数据库迁移（不创建 Prisma Client 连接）
+ * 执行 Prisma 命令的通用函数
+ * @param prismaArgs Prisma 命令参数数组，如 ['migrate', 'status'] 或 ['migrate', 'deploy']
+ * @param timeout 命令执行超时时间（毫秒），默认 30 秒
+ * @returns 返回命令执行的 stdout 和 stderr
  */
-async function runDatabaseMigrations(): Promise<void> {
+async function executePrismaCommand(
+  prismaArgs: string[],
+  timeout: number = 30000
+): Promise<{ stdout: string; stderr: string }> {
+  const schemaPath = getSchemaPath()
   const dbPath = getDatabasePath()
   const databaseUrl = `file:${dbPath}`
-  const schemaPath = getSchemaPath()
-  const migrationsPath = getMigrationsPath()
 
   // 检查必要文件是否存在
   if (!existsSync(schemaPath)) {
@@ -145,26 +150,16 @@ async function runDatabaseMigrations(): Promise<void> {
     throw new Error(`Prisma schema not found: ${schemaPath}`)
   }
 
-  if (!existsSync(migrationsPath)) {
-    logInfo(`Migrations directory not found: ${migrationsPath}, skipping migrations`)
-    return
-  }
-
-  logInfo('Running Prisma Migrate deploy...')
-  logInfo(`Database URL: ${databaseUrl}`)
-  logInfo(`Schema path: ${schemaPath}`)
-  logInfo(`Migrations path: ${migrationsPath}`)
-
-  // 执行 prisma migrate deploy
+  // 获取 Prisma 可执行文件路径
   const prismaBin = app.isPackaged
     ? path.join(app.getAppPath(), 'node_modules', '.bin', 'prisma')
     : path.join(process.cwd(), 'node_modules', '.bin', 'prisma')
 
+  // 确定使用的命令和参数
   const command = app.isPackaged && existsSync(prismaBin) ? prismaBin : 'pnpm'
-  const args =
-    app.isPackaged && existsSync(prismaBin)
-      ? ['migrate', 'deploy', '--schema', schemaPath]
-      : ['exec', 'prisma', 'migrate', 'deploy', '--schema', schemaPath]
+  const args = app.isPackaged && existsSync(prismaBin)
+    ? [...prismaArgs, '--schema', schemaPath]
+    : ['exec', 'prisma', ...prismaArgs, '--schema', schemaPath]
 
   // 添加 busy_timeout 参数到数据库 URL，避免锁定冲突
   const urlWithTimeout = `${databaseUrl}?busy_timeout=30000`
@@ -180,8 +175,77 @@ async function runDatabaseMigrations(): Promise<void> {
     env,
     cwd: app.isPackaged ? app.getAppPath() : process.cwd(),
     maxBuffer: 10 * 1024 * 1024,
-    timeout: 60000 // 60秒超时
+    timeout
   })
+
+  return { stdout, stderr }
+}
+
+/**
+ * 检查数据库迁移状态
+ * 返回 true 表示数据库已是最新状态，无需迁移
+ */
+async function checkMigrationStatus(): Promise<boolean> {
+  const dbPath = getDatabasePath()
+
+  // 如果数据库文件不存在，需要执行迁移
+  if (!existsSync(dbPath)) {
+    logInfo('Database file does not exist, migration needed')
+    return false
+  }
+
+  logInfo('Checking database migration status...')
+  logInfo(`Database URL: file:${dbPath}`)
+
+  try {
+    const { stdout, stderr } = await executePrismaCommand(['migrate', 'status'])
+
+    if (stdout) {
+      logInfo('Migration status output:', stdout)
+      // 如果输出包含 "Database schema is up to date"，说明无需迁移
+      if (stdout.includes('Database schema is up to date')) {
+        logInfo('Database schema is up to date, skipping migrations')
+        return true
+      }
+    }
+    if (stderr) {
+      logInfo('Migration status stderr:', stderr)
+    }
+
+    // 如果有其他输出，说明可能有待应用的迁移
+    return false
+  } catch (error: any) {
+    // 如果执行失败（可能是数据库不存在或需要迁移），返回 false 以执行迁移
+    logInfo('Migration status check failed, will run migrations:', error.message)
+    return false
+  }
+}
+
+/**
+ * 执行数据库迁移（不创建 Prisma Client 连接）
+ */
+async function runDatabaseMigrations(): Promise<void> {
+  const dbPath = getDatabasePath()
+  const migrationsPath = getMigrationsPath()
+
+  if (!existsSync(migrationsPath)) {
+    logInfo(`Migrations directory not found: ${migrationsPath}, skipping migrations`)
+    return
+  }
+
+  // 先检查迁移状态，如果数据库已是最新，跳过迁移
+  const isUpToDate = await checkMigrationStatus()
+  if (isUpToDate) {
+    logInfo('Database migrations are up to date, skipping deploy')
+    return
+  }
+
+  logInfo('Running Prisma Migrate deploy...')
+  logInfo(`Database URL: file:${dbPath}`)
+  logInfo(`Migrations path: ${migrationsPath}`)
+
+  // 执行 prisma migrate deploy，使用 60 秒超时
+  const { stdout, stderr } = await executePrismaCommand(['migrate', 'deploy'], 60000)
 
   if (stdout) {
     logInfo('Migration output:', stdout)

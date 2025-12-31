@@ -15,7 +15,7 @@
 
 - [x] Error: OpenAI API error: 400 Unsupported parameter: 'temperature' is not supported with this model. gpt-5.1-codex
 - [x] SQLite database is locked - 数据库初始化时锁定问题
-- [ ] 聊天界面滚动到底部功能不稳定
+- [x] 聊天界面滚动到底部功能不稳定
 
 ## 待开发
 

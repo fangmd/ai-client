@@ -91,6 +91,9 @@ export const Chat: React.FC = () => {
   const isNearBottomRef = useRef(true)
   const prevLoadingRef = useRef(false)
   const needScrollToBottomRef = useRef(false)
+  const isInTwoSecondWindowRef = useRef(false)
+  const twoSecondWindowTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const lastHeightRef = useRef<number>(0)
 
   // 检查是否在底部附近（距离底部100px内）
   const checkIfNearBottom = () => {
@@ -103,7 +106,16 @@ export const Chat: React.FC = () => {
   }
 
   const scrollToBottom = (behavior: 'smooth' | 'instant' = 'smooth') => {
-    messagesEndRef.current?.scrollIntoView({ behavior })
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    if (behavior === 'instant') {
+      // 直接设置 scrollTop，立即滚动到底部
+      container.scrollTop = container.scrollHeight
+    } else {
+      // 使用 scrollTo 实现平滑滚动
+      container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' })
+    }
   }
 
   // 监听滚动事件，更新是否在底部附近的状态
@@ -122,12 +134,37 @@ export const Chat: React.FC = () => {
     }
   }, [])
 
-  // 消息加载完成时，设置标志等待内容渲染后滚动
+  // 消息加载完成时，设置标志等待内容渲染后滚动，并启动2秒窗口期
   useEffect(() => {
     // 检测 loadingMessages 从 true 变为 false（加载完成）
     if (prevLoadingRef.current && !loadingMessages && messages.length > 0) {
       logDebug('消息加载完成，等待内容渲染后滚动', messages.length)
       needScrollToBottomRef.current = true
+      isInTwoSecondWindowRef.current = true
+
+      // 清除之前的2秒窗口期定时器
+      if (twoSecondWindowTimerRef.current) {
+        clearTimeout(twoSecondWindowTimerRef.current)
+      }
+
+      // 启动2秒窗口期
+      twoSecondWindowTimerRef.current = setTimeout(() => {
+        logDebug('2秒窗口期结束')
+        isInTwoSecondWindowRef.current = false
+        // 窗口期结束后，如果还需要滚动，执行最后一次滚动
+        if (needScrollToBottomRef.current) {
+          const scrollContainer = scrollContainerRef.current
+          if (scrollContainer) {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                scrollToBottom('instant')
+                logDebug('2秒窗口期结束，执行最后一次滚动')
+                needScrollToBottomRef.current = false
+              })
+            })
+          }
+        }
+      }, 2000)
     }
     prevLoadingRef.current = loadingMessages
   }, [loadingMessages, messages.length])
@@ -137,19 +174,61 @@ export const Chat: React.FC = () => {
     const container = messagesContainerRef.current
     if (!container) return
 
-    const resizeObserver = new ResizeObserver(() => {
-      if (needScrollToBottomRef.current) {
-        logDebug('内容高度变化，执行滚动')
-        // TODO: 没有找到合适的时机，滚动到底部
-        setTimeout(() => {
+    const performScroll = () => {
+      const scrollContainer = scrollContainerRef.current
+      if (!scrollContainer || !needScrollToBottomRef.current) return
+
+      // 使用 requestAnimationFrame 确保在正确的渲染时机执行
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          // 双重 requestAnimationFrame 确保 DOM 完全渲染
           scrollToBottom('instant')
-        }, 50)
-        needScrollToBottomRef.current = false
+          logDebug('执行滚动到底部')
+
+          // 如果不在2秒窗口期内，清除滚动标志
+          if (!isInTwoSecondWindowRef.current) {
+            needScrollToBottomRef.current = false
+          }
+        })
+      })
+    }
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      if (!needScrollToBottomRef.current) return
+
+      const entry = entries[0]
+      if (!entry) return
+
+      const currentHeight = entry.contentRect.height
+
+      // 如果在2秒窗口期内，任何高度变化都立即执行滚动
+      if (isInTwoSecondWindowRef.current) {
+        if (currentHeight !== lastHeightRef.current) {
+          lastHeightRef.current = currentHeight
+          logDebug('2秒窗口期内高度变化，立即执行滚动', currentHeight)
+          performScroll()
+        }
+        return
       }
+
+      // 2秒窗口期外的逻辑：如果高度没有变化，说明内容已经稳定，立即执行滚动
+      if (currentHeight === lastHeightRef.current) {
+        logDebug('内容高度稳定，立即执行滚动')
+        performScroll()
+        return
+      }
+
+      lastHeightRef.current = currentHeight
+      logDebug('内容高度变化', currentHeight)
     })
 
     resizeObserver.observe(container)
-    return () => resizeObserver.disconnect()
+    return () => {
+      resizeObserver.disconnect()
+      if (twoSecondWindowTimerRef.current) {
+        clearTimeout(twoSecondWindowTimerRef.current)
+      }
+    }
   }, [])
 
   // 消息增加时，如果用户在底部附近，自动滚动到底部
