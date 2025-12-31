@@ -16,17 +16,35 @@ export const MessageItem: React.FC<Props> = ({ message }) => {
   const [isCopied, setIsCopied] = useState(false)
 
   // logDebug('【MessageItem】message:', message)
-  
+
   // 工具调用消息
   if (message.contentType === 'tool_call') {
     return <ToolCallItem message={message} />
   }
-  
+
   if (message.role === 'assistant') {
     return (
-      <div className={clsx('markdown-body', 'pb-[20px] w-full overflow-hidden')} key={message.id}>
-        {/* remarkPlugins={[remarkGfm]} components={components as any} */}
-        <Streamdown isAnimating={message.status === 'sending'}>{message.content}</Streamdown>
+      <div className="group overflow-hidden" key={message.id}>
+        <div className={clsx('markdown-body', 'pb-[20px] w-full overflow-hidden')}>
+          {/* remarkPlugins={[remarkGfm]} components={components as any} */}
+          <Streamdown isAnimating={message.status === 'sending'}>{message.content}</Streamdown>
+        </div>
+        <div className="flex justify-start ml-2 py-1 opacity-0 pointer-events-none transition-opacity delay-[2000ms] group-hover:opacity-100 group-hover:pointer-events-auto group-hover:delay-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Copy"
+            onClick={() => {
+              copy(message.content)
+              setIsCopied(true)
+              setTimeout(() => {
+                setIsCopied(false)
+              }, 2000)
+            }}
+          >
+            {isCopied ? <Check /> : <Copy />}
+          </Button>
+        </div>
       </div>
     )
   }
