@@ -3,8 +3,9 @@ import { IPC_CHANNELS } from '@/common/constants'
 import { responseSuccess, responseError } from '@/common/response'
 import { AIProviderFactory } from '@/main/providers'
 import { logInfo, logError, logDebug } from '@/main/utils'
-import type { ToolCallInfo, StreamChatRequest, CancelChatRequest } from '@/types'
+import type { ToolCallInfo, StreamChatRequest, CancelChatRequest, AIMessageInput } from '@/types'
 import { createMessage, updateMessage } from '@/main/repository/message'
+import { getConfig } from '@/main/repository/config'
 
 /**
  * 存储活跃的请求，用于取消功能
@@ -53,12 +54,27 @@ export class AIHandler {
           return
         }
 
+        // 获取系统提示词（系统提示词是纯文本，不需要 JSON 解析）
+        const systemPromptConfig = await getConfig('system_prompt')
+        const systemPrompt = systemPromptConfig?.value || ''
+        
+        // 如果系统提示词不为空，添加到消息列表开头
+        const finalMessages: AIMessageInput[] = systemPrompt.trim()
+          ? [{ role: 'system', content: systemPrompt.trim() }, ...messages]
+          : messages
+
+        logDebug('【IPC Handler】System prompt injected', {
+          hasSystemPrompt: !!systemPrompt.trim(),
+          systemPromptLength: systemPrompt.trim().length,
+          finalMessagesCount: finalMessages.length
+        })
+
         // 用于存储工具调用消息的 ID 映射
         const toolCallMessageIds = new Map<string, bigint>()
 
         // 调用 Provider 进行流式聊天
         await provider.streamChat(
-          messages,
+          finalMessages,
           config,
           {
             onChunk: (chunk: string) => {

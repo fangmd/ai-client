@@ -7,14 +7,17 @@ import { applyTheme, setupSystemThemeListener } from '@renderer/utils'
 interface ConfigState {
   // 配置数据
   theme: ThemeMode
+  systemPrompt: string
 
   // Actions
   loadConfig: () => Promise<void>
   setTheme: (mode: ThemeMode) => Promise<void>
+  setSystemPrompt: (prompt: string) => Promise<void>
 }
 
 export const useConfigStore = create<ConfigState>((set) => ({
   theme: DEFAULT_CONFIG[CONFIG_KEYS.THEME],
+  systemPrompt: DEFAULT_CONFIG[CONFIG_KEYS.SYSTEM_PROMPT],
 
   /**
    * 从数据库加载所有配置
@@ -44,6 +47,11 @@ export const useConfigStore = create<ConfigState>((set) => ({
           applyTheme(DEFAULT_CONFIG[CONFIG_KEYS.THEME])
           setupSystemThemeListener(DEFAULT_CONFIG[CONFIG_KEYS.THEME])
         }
+        // 解析系统提示词配置
+        if (configs[CONFIG_KEYS.SYSTEM_PROMPT] !== undefined) {
+          // 系统提示词是纯文本，直接使用，不需要 JSON 解析
+          set({ systemPrompt: configs[CONFIG_KEYS.SYSTEM_PROMPT] })
+        }
       }
     } catch (error) {
       console.error('Failed to load config:', error)
@@ -67,6 +75,25 @@ export const useConfigStore = create<ConfigState>((set) => ({
       }
     } catch (error) {
       console.error('Failed to set theme:', error)
+    }
+  },
+
+  /**
+   * 设置系统提示词并保存到数据库
+   */
+  setSystemPrompt: async (prompt: string) => {
+    try {
+      const response = (await window.electron.ipcRenderer.invoke(IPC_CHANNELS.config.set, {
+        key: CONFIG_KEYS.SYSTEM_PROMPT,
+        value: prompt
+      })) as IPCResponse<ConfigItem>
+
+      if (response.code === SUCCESS_CODE) {
+        set({ systemPrompt: prompt })
+      }
+    } catch (error) {
+      console.error('Failed to set system prompt:', error)
+      throw error
     }
   }
 }))
