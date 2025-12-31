@@ -21,7 +21,6 @@
 
 
 - [ ] tools support 客户端 自定义 tools
-- [ ] 增加 project 概念
 - [ ] memory
 - [ ] 支持 claude 模型
 - [ ] 支持 gemini 模型
