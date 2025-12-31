@@ -56,18 +56,14 @@ export const SystemPromptSettings: React.FC = () => {
           onChange={(e) => setLocalPrompt(e.target.value)}
           placeholder="例如：你是一个专业的编程助手，擅长解释代码和解决技术问题。请用简洁明了的方式回答问题。"
           rows={6}
-          className="mb-3 font-mono text-sm"
+          className="mb-3 font-mono text-sm max-h-100"
         />
         <div className="flex items-center justify-between">
           <div className="text-sm text-muted-foreground">
             {hasChanges && <span className="text-orange-500">有未保存的更改</span>}
             {saved && <span className="text-green-500">保存成功</span>}
           </div>
-          <Button
-            onClick={handleSave}
-            disabled={saving || !hasChanges}
-            size="sm"
-          >
+          <Button onClick={handleSave} disabled={saving || !hasChanges} size="sm">
             {saving ? (
               <>
                 <Loader2 className="size-4 mr-2 animate-spin" />
@@ -85,4 +81,3 @@ export const SystemPromptSettings: React.FC = () => {
     </section>
   )
 }
-
