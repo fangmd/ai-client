@@ -1,7 +1,9 @@
-import { Globe, FolderSearch, Loader2, CheckCircle2, XCircle, Wrench, Terminal } from 'lucide-react'
+import { Globe, FolderSearch, Loader2, CheckCircle2, XCircle, Wrench, Terminal, ChevronDown } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@renderer/components/ui/collapsible'
 import type { DbMessageWithAttachments } from '@/types'
 import { cn } from '@renderer/lib/utils'
+import { useState } from 'react'
 
 interface ToolCallItemProps {
   message: DbMessageWithAttachments
@@ -130,6 +132,7 @@ export function ToolCallItem({ message }: ToolCallItemProps) {
 function TerminalToolCallItem({ message }: { message: DbMessageWithAttachments }) {
   const command = message.toolQuery || ''
   const status = message.toolStatus as 'in_progress' | 'searching' | 'completed' | 'failed' | null
+  const [isOpen, setIsOpen] = useState(false)
   
   // 获取状态图标
   const getStatusIcon = () => {
@@ -163,42 +166,60 @@ function TerminalToolCallItem({ message }: { message: DbMessageWithAttachments }
     }
   }
 
+  const hasContent = command || (status === 'completed' && message.content)
+
   return (
-    <div className="tool-call-item bg-gray-50 dark:bg-gray-800 rounded-lg p-4 my-2 border border-gray-200 dark:border-gray-700">
-      <div className="flex items-center gap-2 mb-2">
-        <Terminal className="w-4 h-4" />
-        <span className="font-medium text-gray-900 dark:text-gray-100">
-          终端命令
-        </span>
-        <div className="flex items-center gap-1.5 ml-auto">
-          {getStatusIcon()}
-          <span className="text-sm text-gray-500 dark:text-gray-400">
-            {getStatusText()}
-          </span>
-        </div>
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <div className="tool-call-item bg-gray-50 dark:bg-gray-800 rounded-lg p-4 my-2 border border-gray-200 dark:border-gray-700">
+        <CollapsibleTrigger asChild>
+          <div className="flex items-center gap-2 mb-2 cursor-pointer hover:opacity-80 transition-opacity">
+            <Terminal className="w-4 h-4" />
+            <span className="font-medium text-gray-900 dark:text-gray-100">
+              终端命令
+            </span>
+            <div className="flex items-center gap-1.5 ml-auto">
+              {getStatusIcon()}
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                {getStatusText()}
+              </span>
+              {hasContent && (
+                <ChevronDown
+                  className={cn(
+                    'w-4 h-4 text-gray-500 dark:text-gray-400 transition-transform duration-200',
+                    isOpen && 'transform rotate-180'
+                  )}
+                />
+              )}
+            </div>
+          </div>
+        </CollapsibleTrigger>
+        
+        {hasContent && (
+          <CollapsibleContent>
+            {command && (
+              <div className="mt-2">
+                <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  命令：
+                </div>
+                <div className="bg-black text-green-400 font-mono text-sm p-3 rounded overflow-x-auto">
+                  {command}
+                </div>
+              </div>
+            )}
+            
+            {status === 'completed' && message.content && (
+              <div className="mt-2">
+                <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  输出：
+                </div>
+                <div className="bg-gray-900 text-gray-100 font-mono text-xs p-3 rounded overflow-x-auto max-h-96 overflow-y-auto">
+                  <pre className="whitespace-pre-wrap">{message.content}</pre>
+                </div>
+              </div>
+            )}
+          </CollapsibleContent>
+        )}
       </div>
-      
-      {command && (
-        <div className="mt-2">
-          <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            命令：
-          </div>
-          <div className="bg-black text-green-400 font-mono text-sm p-3 rounded overflow-x-auto">
-            {command}
-          </div>
-        </div>
-      )}
-      
-      {status === 'completed' && message.content && (
-        <div className="mt-2">
-          <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            输出：
-          </div>
-          <div className="bg-gray-900 text-gray-100 font-mono text-xs p-3 rounded overflow-x-auto max-h-96 overflow-y-auto">
-            <pre className="whitespace-pre-wrap">{message.content}</pre>
-          </div>
-        </div>
-      )}
-    </div>
+    </Collapsible>
   )
 }
