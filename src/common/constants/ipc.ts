@@ -16,6 +16,8 @@ export const IPC_CHANNELS = {
     streamError: 'ai:stream-error',
     // 取消请求
     cancelChat: 'ai:cancel-chat',
+    // AI 消息开始
+    assistantMessageStart: 'ai:assistant-message-start',
     // 工具调用相关
     toolCallStart: 'ai:tool-call-start',
     toolCallProgress: 'ai:tool-call-progress',

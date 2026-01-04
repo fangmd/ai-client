@@ -1,6 +1,4 @@
 import { Streamdown } from 'streamdown'
-// import remarkGfm from 'remark-gfm'
-// import { components } from './markdown-viewer'
 import clsx from 'clsx'
 import { Check, Copy } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
@@ -26,7 +24,6 @@ export const MessageItem: React.FC<Props> = ({ message }) => {
     return (
       <div className="group overflow-hidden" key={message.id}>
         <div className={clsx('markdown-body', 'pb-[20px] w-full overflow-hidden')}>
-          {/* remarkPlugins={[remarkGfm]} components={components as any} */}
           <Streamdown isAnimating={message.status === 'sending'}>{message.content}</Streamdown>
         </div>
         <div className="flex justify-start ml-2 py-1 opacity-0 pointer-events-none transition-opacity delay-[2000ms] group-hover:opacity-100 group-hover:pointer-events-auto group-hover:delay-0">

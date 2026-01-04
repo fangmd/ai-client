@@ -300,7 +300,7 @@ export class OpenAIProvider implements AIProvider {
         })
 
         switch (chunkType) {
-          // 1. 工具调用开始
+          // 1. 输出项添加（工具调用或 AI 消息开始）
           case 'response.output_item.added': {
             const event = chunk as any
             if (event.item?.type === 'web_search_call') {
@@ -351,6 +351,18 @@ export class OpenAIProvider implements AIProvider {
               callbacks.onToolCallStart?.(toolInfo)
 
               logDebug('Function call started', { toolInfo, callId })
+            } else if (event.item?.type === 'message' && event.item?.role === 'assistant') {
+              // AI 消息开始
+              logDebug('AI assistant message started', {
+                itemId: event.item.id,
+                type: event.item.type,
+                role: event.item.role
+              })
+              callbacks.onAssistantMessageStart?.({
+                id: event.item.id,
+                type: event.item.type,
+                role: event.item.role
+              })
             }
             break
           }

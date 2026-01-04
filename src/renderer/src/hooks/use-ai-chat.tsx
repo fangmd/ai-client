@@ -133,30 +133,14 @@ export const useAIChat = ({ config, defaultProviderId }: UseAIChatOptions) => {
       return
     }
 
-    // 提前创建空的助手消息并保存到数据库（状态为 pending）
-    const assistantMessage = await addMessage(sessionId, {
-      role: 'assistant',
-      content: '',
-      status: 'pending'
-    })
+    // 不再提前创建 AI 消息，将在收到 assistantMessageStart 事件时创建
 
-    if (!assistantMessage) {
-      console.error('Failed to create assistant message')
-      setIsSending(false)
-      statusRef.current = 'error'
-      return
-    }
-
-    const assistantMessageId = assistantMessage.id
-
-    // 准备消息列表（用于 AI 请求，排除刚创建的空助手消息）
-    const messageList = messages
-      .filter((msg) => msg.id !== assistantMessageId)
-      .map((msg) => ({
-        role: msg.role,
-        content: msg.content,
-        attachments: msg.attachments
-      }))
+    // 准备消息列表（用于 AI 请求）
+    const messageList = messages.map((msg) => ({
+      role: msg.role,
+      content: msg.content,
+      attachments: msg.attachments
+    }))
     messageList.push({
       role: 'user',
       content: content.trim(),
@@ -169,10 +153,34 @@ export const useAIChat = ({ config, defaultProviderId }: UseAIChatOptions) => {
 
     // 用于收集完整的助手回复
     let fullAssistantContent = ''
+    // 用于跟踪 AI 消息 ID（从 assistantMessageStart 事件中获取）
+    let assistantMessageId: bigint | null = null
 
     // 清理之前的监听器
     unsubscribeRefs.current.forEach((unsubscribe) => unsubscribe())
     unsubscribeRefs.current = []
+
+    // 监听 AI 消息开始事件
+    const unsubscribeAssistantMessageStart = window.electron.ipcRenderer.on(
+      IPC_CHANNELS.ai.assistantMessageStart,
+      (_event, data: { requestId: string; messageId: bigint; message: any }) => {
+        if (data.requestId === requestId && data.message) {
+          // 设置 AI 消息 ID，用于后续的 chunk 追加
+          assistantMessageId = data.messageId
+          
+          // AI 消息已经在后端创建，这里直接添加到本地状态
+          const assistantMessage = {
+            ...data.message,
+            id: data.messageId,
+            sessionId
+          }
+          // 使用 addLocalMessage 避免重复创建数据库记录
+          const { addLocalMessage } = useChatStore.getState()
+          addLocalMessage(assistantMessage)
+        }
+      }
+    )
+    unsubscribeRefs.current.push(unsubscribeAssistantMessageStart)
 
     // 监听流式数据块
     const unsubscribeChunk = window.electron.ipcRenderer.on(
@@ -180,7 +188,10 @@ export const useAIChat = ({ config, defaultProviderId }: UseAIChatOptions) => {
       (_event, data: { requestId: string; chunk: string }) => {
         if (data.requestId === requestId) {
           fullAssistantContent += data.chunk
-          appendToLocalMessage(assistantMessageId, data.chunk)
+          // 只有在 AI 消息已创建时才追加内容
+          if (assistantMessageId) {
+            appendToLocalMessage(assistantMessageId, data.chunk)
+          }
         }
       }
     )
@@ -250,12 +261,15 @@ export const useAIChat = ({ config, defaultProviderId }: UseAIChatOptions) => {
           // 如果有完整文本（来自 response.output_text.done 或 response.content_part.done），
           // 使用完整文本替换之前累积的 delta
           const finalContent = data.completeText || fullAssistantContent
-          
-          // 流式响应完成，更新数据库中的助手消息内容和状态
-          await updateMessage(assistantMessageId, {
-            content: finalContent,
-            status: 'sent'
-          })
+
+          // 只有在 AI 消息已创建时才更新
+          if (assistantMessageId) {
+            // 流式响应完成，更新数据库中的助手消息内容和状态
+            await updateMessage(assistantMessageId, {
+              content: finalContent,
+              status: 'sent'
+            })
+          }
 
           setIsSending(false)
           statusRef.current = 'ready'
@@ -279,11 +293,14 @@ export const useAIChat = ({ config, defaultProviderId }: UseAIChatOptions) => {
         if (data.requestId === requestId) {
           console.error('AI chat error:', data.msg)
 
-          // 更新数据库中的助手消息状态为错误
-          await updateMessage(assistantMessageId, {
-            content: fullAssistantContent || `Error: ${data.msg}`,
-            status: 'error'
-          })
+          // 只有在 AI 消息已创建时才更新
+          if (assistantMessageId) {
+            // 更新数据库中的助手消息状态为错误
+            await updateMessage(assistantMessageId, {
+              content: fullAssistantContent || `Error: ${data.msg}`,
+              status: 'error'
+            })
+          }
 
           setIsSending(false)
           statusRef.current = 'error'

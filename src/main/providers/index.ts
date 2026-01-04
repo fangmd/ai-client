@@ -12,6 +12,9 @@ export type ToolType = 'web_search' | 'file_search' | 'terminal'
 export interface StreamCallbacks {
   onChunk: (chunk: string) => void
   
+  // AI 消息开始回调
+  onAssistantMessageStart?: (item: { id: string; type: string; role?: string }) => void  // AI 消息开始（response.output_item.added 且 item.type === 'message' 且 role === 'assistant'）
+  
   // 工具调用回调
   onToolCallStart?: (toolInfo: ToolCallInfo) => void      // 工具调用开始
   onToolCallProgress?: (toolInfo: ToolCallInfo) => void   // 工具调用进度

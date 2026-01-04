@@ -77,12 +77,42 @@ export class AIHandler {
 
         // 用于存储工具调用消息的 ID 映射
         const toolCallMessageIds = new Map<string, bigint>()
+        // 用于存储 AI 消息的 ID（itemId -> messageId）
+        let assistantMessageId: bigint | null = null
 
         // 调用 Provider 进行流式聊天
         await provider.streamChat(
           finalMessages,
           config,
           {
+            // AI 消息开始 - 创建 AI 消息
+            onAssistantMessageStart: async (item: { id: string; type: string; role?: string }) => {
+              try {
+                const assistantMessage = await createMessage({
+                  sessionId,
+                  role: 'assistant',
+                  content: '',
+                  status: 'pending'
+                })
+                
+                assistantMessageId = assistantMessage.id
+                
+                // 通知前端 AI 消息开始
+                event.sender.send(IPC_CHANNELS.ai.assistantMessageStart, {
+                  requestId,
+                  messageId: assistantMessage.id,
+                  message: assistantMessage
+                })
+                
+                logInfo('【IPC Handler】AI assistant message started and message created', {
+                  itemId: item.id,
+                  messageId: assistantMessage.id
+                })
+              } catch (error) {
+                logError('【IPC Handler】Failed to create assistant message', error)
+              }
+            },
+            
             onChunk: (chunk: string) => {
               // 发送数据块
               logDebug('【IPC Handler】ai:streamChunk, requestId:', requestId, 'chunkLength:', chunk.length)
@@ -194,7 +224,21 @@ export class AIHandler {
               }
             },
             
-            onDone: (completeText?: string) => {
+            onDone: async (completeText?: string) => {
+              // 如果有 AI 消息，更新其状态
+              if (assistantMessageId) {
+                try {
+                  await updateMessage(assistantMessageId, {
+                    status: 'sent'
+                  })
+                  logDebug('【IPC Handler】AI assistant message status updated to sent', {
+                    messageId: assistantMessageId.toString()
+                  })
+                } catch (error) {
+                  logError('【IPC Handler】Failed to update assistant message status', error)
+                }
+              }
+              
               // 发送完成事件
               logInfo('【IPC Handler】ai:streamDone, requestId:', requestId, 'hasCompleteText:', !!completeText)
               event.sender.send(IPC_CHANNELS.ai.streamDone, {
@@ -203,7 +247,21 @@ export class AIHandler {
               })
               activeRequests.delete(requestId)
             },
-            onError: (error: Error) => {
+            onError: async (error: Error) => {
+              // 如果有 AI 消息，更新其状态为错误
+              if (assistantMessageId) {
+                try {
+                  await updateMessage(assistantMessageId, {
+                    status: 'error'
+                  })
+                  logDebug('【IPC Handler】AI assistant message status updated to error', {
+                    messageId: assistantMessageId.toString()
+                  })
+                } catch (updateError) {
+                  logError('【IPC Handler】Failed to update assistant message status to error', updateError)
+                }
+              }
+              
               // 发送错误事件
               logError('【IPC Handler】ai:streamError, requestId:', requestId, 'error:', error.message)
               event.sender.send(IPC_CHANNELS.ai.streamError, {
