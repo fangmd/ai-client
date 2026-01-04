@@ -131,6 +131,8 @@ export const AiModelDialog: React.FC<AiModelDialogProps> = ({
     }
   }
 
+  console.log('[AiModelDialog] formData', formData)
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
