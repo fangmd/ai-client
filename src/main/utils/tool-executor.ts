@@ -128,7 +128,16 @@ export async function executeTerminalCommand(
   }
 
   // 2. 确定工作目录
-  const cwd = workingDirectory ? path.resolve(workingDirectory) : os.homedir()
+  let cwd: string
+  if (workingDirectory) {
+    // 展开 ~ 为用户主目录（支持 ~ 和 ~/path 格式）
+    const expandedPath = workingDirectory.startsWith('~')
+      ? workingDirectory.replace(/^~/, os.homedir())
+      : workingDirectory
+    cwd = path.resolve(expandedPath)
+  } else {
+    cwd = os.homedir()
+  }
 
   // 3. 验证工作目录（必须在用户目录下）
   if (!isPathAllowed(cwd)) {

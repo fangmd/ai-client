@@ -25,7 +25,7 @@ export const terminalToolDefinitionForResponsesAPI = {
       workingDirectory: {
         type: 'string',
         description:
-          'The working directory where the command should be executed. Defaults to user home directory if not specified.'
+          "The working directory where the command should be executed. If not specified, defaults to the current user's home directory. The home directory can be obtained via bash using '$HOME' environment variable or 'echo ~' command (e.g., /Users/username on macOS, C:\\Users\\username on Windows, /home/username on Linux)."
       }
     },
     required: ['command']

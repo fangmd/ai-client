@@ -63,7 +63,7 @@ export class AIHandler {
         // 获取系统提示词（系统提示词是纯文本，不需要 JSON 解析）
         const systemPromptConfig = await getConfig('system_prompt')
         const systemPrompt = systemPromptConfig?.value || ''
-        
+
         // 如果系统提示词不为空，添加到消息列表开头
         const finalMessages: AIMessageInput[] = systemPrompt.trim()
           ? [{ role: 'system', content: systemPrompt.trim() }, ...messages]
@@ -77,6 +77,8 @@ export class AIHandler {
 
         // 用于存储工具调用消息的 ID 映射
         const toolCallMessageIds = new Map<string, bigint>()
+        // 用于存储工具调用信息映射（itemId -> toolInfo）
+        const toolCallInfos = new Map<string, ToolCallInfo>()
         // 用于存储 AI 消息的 ID（itemId -> messageId）
         let assistantMessageId: bigint | null = null
 
@@ -94,16 +96,16 @@ export class AIHandler {
                   content: '',
                   status: 'pending'
                 })
-                
+
                 assistantMessageId = assistantMessage.id
-                
+
                 // 通知前端 AI 消息开始
                 event.sender.send(IPC_CHANNELS.ai.assistantMessageStart, {
                   requestId,
                   messageId: assistantMessage.id,
                   message: assistantMessage
                 })
-                
+
                 logInfo('【IPC Handler】AI assistant message started and message created', {
                   itemId: item.id,
                   messageId: assistantMessage.id
@@ -112,16 +114,21 @@ export class AIHandler {
                 logError('【IPC Handler】Failed to create assistant message', error)
               }
             },
-            
+
             onChunk: (chunk: string) => {
               // 发送数据块
-              logDebug('【IPC Handler】ai:streamChunk, requestId:', requestId, 'chunkLength:', chunk.length)
+              logDebug(
+                '【IPC Handler】ai:streamChunk, requestId:',
+                requestId,
+                'chunkLength:',
+                chunk.length
+              )
               event.sender.send(IPC_CHANNELS.ai.streamChunk, {
                 requestId,
                 chunk
               })
             },
-            
+
             // 工具调用开始 - 创建工具消息
             onToolCallStart: async (toolInfo: ToolCallInfo) => {
               try {
@@ -136,9 +143,10 @@ export class AIHandler {
                   toolItemId: toolInfo.itemId,
                   toolOutputIndex: toolInfo.outputIndex
                 })
-                
+
                 toolCallMessageIds.set(toolInfo.itemId, toolMessage.id)
-                
+                toolCallInfos.set(toolInfo.itemId, toolInfo)
+
                 // 通知前端工具调用开始，直接使用 DbMessage
                 event.sender.send(IPC_CHANNELS.ai.toolCallStart, {
                   requestId,
@@ -146,7 +154,7 @@ export class AIHandler {
                   messageId: toolMessage.id.toString(),
                   message: toolMessage
                 })
-                
+
                 logInfo('【IPC Handler】Tool call started and message created', {
                   toolInfo,
                   messageId: toolMessage.id.toString()
@@ -165,7 +173,7 @@ export class AIHandler {
                     content: getToolCallProgressMessage(toolInfo),
                     toolStatus: toolInfo.status
                   })
-                  
+
                   // 通知前端进度更新
                   event.sender.send(IPC_CHANNELS.ai.toolCallProgress, {
                     requestId,
@@ -173,7 +181,7 @@ export class AIHandler {
                     messageId: messageId.toString(),
                     message: updatedMessage
                   })
-                  
+
                   logDebug('【IPC Handler】Tool call progress updated', {
                     toolInfo,
                     messageId: messageId.toString()
@@ -190,22 +198,21 @@ export class AIHandler {
               if (messageId) {
                 try {
                   // 对于终端工具，使用 command 字段；对于其他工具，使用 query 字段
-                  const toolQuery = toolInfo.type === 'terminal' 
-                    ? toolInfo.command 
-                    : toolInfo.query
-                  
+                  const toolQuery = toolInfo.type === 'terminal' ? toolInfo.command : toolInfo.query
+
                   // 对于终端工具，如果有执行结果，使用执行结果作为内容；否则使用完成消息
-                  const content = toolInfo.type === 'terminal' && resultContent
-                    ? resultContent
-                    : getToolCallCompleteMessage(toolInfo)
-                  
+                  const content =
+                    toolInfo.type === 'terminal' && resultContent
+                      ? resultContent
+                      : getToolCallCompleteMessage(toolInfo)
+
                   const updatedMessage = await updateMessage(messageId, {
                     content,
                     status: 'sent',
                     toolStatus: toolInfo.status,
                     toolQuery
                   })
-                  
+
                   // 通知前端工具调用完成
                   event.sender.send(IPC_CHANNELS.ai.toolCallComplete, {
                     requestId,
@@ -213,7 +220,7 @@ export class AIHandler {
                     messageId: messageId.toString(),
                     message: updatedMessage
                   })
-                  
+
                   logInfo('【IPC Handler】Tool call completed and message updated', {
                     toolInfo,
                     messageId: messageId.toString()
@@ -223,7 +230,7 @@ export class AIHandler {
                 }
               }
             },
-            
+
             onDone: async (completeText?: string) => {
               // 如果有 AI 消息，更新其状态
               if (assistantMessageId) {
@@ -238,16 +245,61 @@ export class AIHandler {
                   logError('【IPC Handler】Failed to update assistant message status', error)
                 }
               }
-              
+
               // 发送完成事件
-              logInfo('【IPC Handler】ai:streamDone, requestId:', requestId, 'hasCompleteText:', !!completeText)
+              logInfo(
+                '【IPC Handler】ai:streamDone, requestId:',
+                requestId,
+                'hasCompleteText:',
+                !!completeText
+              )
               event.sender.send(IPC_CHANNELS.ai.streamDone, {
                 requestId,
                 completeText: completeText || undefined
               })
               activeRequests.delete(requestId)
             },
-            onError: async (error: Error) => {
+            onError: async (error: Error, toolInfo?: ToolCallInfo) => {
+              // 如果提供了 toolInfo，只更新那个工具的消息状态
+              // 否则，更新所有正在执行的工具消息状态为错误（整个请求出错的情况）
+              if (toolInfo) {
+                // 单个工具调用出错
+                const messageId = toolCallMessageIds.get(toolInfo.itemId)
+                if (messageId) {
+                  try {
+                    // 构造错误状态的 toolInfo
+                    const errorToolInfo: ToolCallInfo = {
+                      ...toolInfo,
+                      status: 'failed'
+                    }
+
+                    const updatedMessage = await updateMessage(messageId, {
+                      content: getToolCallErrorMessage(errorToolInfo, error.message),
+                      status: 'error',
+                      toolStatus: 'failed'
+                    })
+
+                    // 通知前端工具调用错误（使用 toolCallProgress 通道）
+                    event.sender.send(IPC_CHANNELS.ai.toolCallProgress, {
+                      requestId,
+                      toolInfo: errorToolInfo,
+                      messageId: messageId.toString(),
+                      message: updatedMessage
+                    })
+
+                    logDebug('【IPC Handler】Tool call message status updated to error', {
+                      itemId: toolInfo.itemId,
+                      messageId: messageId.toString()
+                    })
+                  } catch (updateError) {
+                    logError(
+                      '【IPC Handler】Failed to update tool call message status to error',
+                      updateError
+                    )
+                  }
+                }
+              }
+
               // 如果有 AI 消息，更新其状态为错误
               if (assistantMessageId) {
                 try {
@@ -258,12 +310,20 @@ export class AIHandler {
                     messageId: assistantMessageId.toString()
                   })
                 } catch (updateError) {
-                  logError('【IPC Handler】Failed to update assistant message status to error', updateError)
+                  logError(
+                    '【IPC Handler】Failed to update assistant message status to error',
+                    updateError
+                  )
                 }
               }
-              
+
               // 发送错误事件
-              logError('【IPC Handler】ai:streamError, requestId:', requestId, 'error:', error.message)
+              logError(
+                '【IPC Handler】ai:streamError, requestId:',
+                requestId,
+                'error:',
+                error.message
+              )
               event.sender.send(IPC_CHANNELS.ai.streamError, {
                 requestId,
                 ...responseError(error)
@@ -352,9 +412,7 @@ function getToolCallCompleteMessage(toolInfo: ToolCallInfo): string {
     case 'web_search':
     case 'file_search': {
       const query = toolInfo.query ? `\n查询：${toolInfo.query}` : ''
-      return toolInfo.type === 'web_search' 
-        ? `✅ 网络搜索完成${query}`
-        : `✅ 文件搜索完成${query}`
+      return toolInfo.type === 'web_search' ? `✅ 网络搜索完成${query}` : `✅ 文件搜索完成${query}`
     }
     case 'terminal': {
       const command = toolInfo.command ? `\n命令：${toolInfo.command}` : ''
@@ -365,3 +423,21 @@ function getToolCallCompleteMessage(toolInfo: ToolCallInfo): string {
   }
 }
 
+function getToolCallErrorMessage(toolInfo: ToolCallInfo, errorMessage: string): string {
+  const errorDetail = errorMessage ? `\n错误：${errorMessage}` : ''
+  switch (toolInfo.type) {
+    case 'web_search':
+    case 'file_search': {
+      const query = toolInfo.query ? `\n查询：${toolInfo.query}` : ''
+      return toolInfo.type === 'web_search'
+        ? `❌ 网络搜索失败${query}${errorDetail}`
+        : `❌ 文件搜索失败${query}${errorDetail}`
+    }
+    case 'terminal': {
+      const command = toolInfo.command ? `\n命令：${toolInfo.command}` : ''
+      return `❌ 终端命令执行失败${command}${errorDetail}`
+    }
+    default:
+      return `❌ 工具调用失败${errorDetail}`
+  }
+}

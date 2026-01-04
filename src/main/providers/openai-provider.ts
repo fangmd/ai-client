@@ -630,6 +630,30 @@ export class OpenAIProvider implements AIProvider {
           formattedResultLength: formattedResult.length
         })
 
+        // 判断命令是否失败（exitCode !== 0 表示失败）
+        const isFailed = result.exitCode !== 0
+
+        // 如果命令失败，调用 onError 通知错误并直接返回，不继续处理
+        if (isFailed) {
+          const errorMessage = result.error || result.stderr || `Command failed with exit code ${result.exitCode}`
+          const failedToolInfo: ToolCallInfo = {
+            ...toolInfo,
+            status: 'failed',
+            ...(toolInfo.type === 'terminal' ? {
+              command: result.command,
+              workingDirectory: result.workingDirectory
+            } : {})
+          }
+          logWarn('[handleFunctionCall] Terminal command failed', {
+            command: result.command,
+            exitCode: result.exitCode,
+            error: errorMessage
+          })
+          callbacks.onError(new Error(`Terminal command failed: ${errorMessage}`), failedToolInfo)
+          return // 失败后直接返回，不继续处理
+        }
+
+        // 命令成功，继续处理
         // 通知工具调用完成（包含执行结果，用于保存到消息内容）
         const completedToolInfo: ToolCallInfo = {
           ...toolInfo,
@@ -639,6 +663,7 @@ export class OpenAIProvider implements AIProvider {
             workingDirectory: result.workingDirectory
           } : {})
         }
+        
         // 注意：formattedResult 会作为 tool 消息传递给 AI
         // 但工具调用消息的 content 需要在 Handler 中更新
         callbacks.onToolCallComplete?.(completedToolInfo, formattedResult)
@@ -697,7 +722,8 @@ export class OpenAIProvider implements AIProvider {
           stack: error instanceof Error ? error.stack : undefined
         })
         const errorMessage = error instanceof Error ? error.message : 'Function call failed'
-        callbacks.onError(new Error(`Terminal command execution failed: ${errorMessage}`))
+        // 传递 toolInfo，让 handler 知道是哪个工具出错了
+        callbacks.onError(new Error(`Terminal command execution failed: ${errorMessage}`), toolInfo)
       }
     }
   }
