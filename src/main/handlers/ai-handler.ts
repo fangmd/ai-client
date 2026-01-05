@@ -82,6 +82,30 @@ export class AIHandler {
         // 用于存储 AI 消息的 ID（itemId -> messageId）
         let assistantMessageId: bigint | null = null
 
+        // IPC 批处理优化：累积 chunk 后批量发送，减少 IPC 通信频率
+        const chunkBuffer: string[] = []
+        let chunkFlushTimer: NodeJS.Timeout | null = null
+        const CHUNK_BATCH_SIZE = 10 // 每批最多累积 10 个 chunk
+        const CHUNK_FLUSH_INTERVAL = 16 // 最多等待 16ms（约 60fps）后发送
+
+        const flushChunks = () => {
+          if (chunkBuffer.length === 0) return
+
+          // 合并所有 chunk 为单个字符串，减少 IPC 消息数量
+          const combinedChunk = chunkBuffer.join('')
+          chunkBuffer.length = 0 // 清空缓冲区
+
+          if (chunkFlushTimer) {
+            clearTimeout(chunkFlushTimer)
+            chunkFlushTimer = null
+          }
+
+          event.sender.send(IPC_CHANNELS.ai.streamChunk, {
+            requestId,
+            chunk: combinedChunk
+          })
+        }
+
         // 调用 Provider 进行流式聊天
         await provider.streamChat(
           finalMessages,
@@ -116,17 +140,27 @@ export class AIHandler {
             },
 
             onChunk: (chunk: string) => {
-              // 发送数据块
-              logDebug(
-                '【IPC Handler】ai:streamChunk, requestId:',
-                requestId,
-                'chunkLength:',
-                chunk.length
-              )
-              event.sender.send(IPC_CHANNELS.ai.streamChunk, {
-                requestId,
-                chunk
-              })
+              // 注释掉流式输出时的日志记录，避免频繁 I/O 导致卡顿
+              // logDebug(
+              //   '【IPC Handler】ai:streamChunk, requestId:',
+              //   requestId,
+              //   'chunkLength:',
+              //   chunk.length
+              // )
+              
+              // 将 chunk 添加到缓冲区
+              chunkBuffer.push(chunk)
+
+              // 如果缓冲区达到批处理大小，立即发送
+              if (chunkBuffer.length >= CHUNK_BATCH_SIZE) {
+                flushChunks()
+              } else {
+                // 否则设置定时器，在指定时间后发送（防抖）
+                if (chunkFlushTimer) {
+                  clearTimeout(chunkFlushTimer)
+                }
+                chunkFlushTimer = setTimeout(flushChunks, CHUNK_FLUSH_INTERVAL)
+              }
             },
 
             // 工具调用开始 - 创建工具消息
@@ -232,6 +266,13 @@ export class AIHandler {
             },
 
             onDone: async (completeText?: string) => {
+              // 确保发送所有剩余的 chunk
+              flushChunks()
+              if (chunkFlushTimer) {
+                clearTimeout(chunkFlushTimer)
+                chunkFlushTimer = null
+              }
+
               // 如果有 AI 消息，更新其状态
               if (assistantMessageId) {
                 try {
@@ -260,6 +301,13 @@ export class AIHandler {
               activeRequests.delete(requestId)
             },
             onError: async (error: Error, toolInfo?: ToolCallInfo) => {
+              // 确保发送所有剩余的 chunk
+              flushChunks()
+              if (chunkFlushTimer) {
+                clearTimeout(chunkFlushTimer)
+                chunkFlushTimer = null
+              }
+
               // 如果提供了 toolInfo，只更新那个工具的消息状态
               // 否则，更新所有正在执行的工具消息状态为错误（整个请求出错的情况）
               if (toolInfo) {

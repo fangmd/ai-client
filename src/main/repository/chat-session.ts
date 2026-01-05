@@ -52,20 +52,11 @@ export async function getChatSessionById(id: bigint) {
   const messageIds = messages.map((m) => m.id)
   const attachmentsMap = await listAttachmentsByMessageIds(messageIds)
 
-  // 合并消息和附件
+  // 合并消息和附件（直接使用 Attachment）
   const messagesWithAttachments = messages.map((msg) => {
     const dbAttachments = attachmentsMap.get(msg.id) || []
     const attachments: Attachment[] | undefined =
-      dbAttachments.length > 0
-        ? dbAttachments.map((a) => ({
-            id: a.id,
-            type: a.type as 'image' | 'file',
-            name: a.name,
-            mimeType: a.mimeType,
-            size: a.size,
-            data: a.data
-          }))
-        : undefined
+      dbAttachments.length > 0 ? dbAttachments : undefined
     return {
       ...msg,
       attachments

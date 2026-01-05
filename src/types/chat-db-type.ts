@@ -6,9 +6,7 @@ import type {
   ToolType, 
   ToolCallStatus, 
   AttachmentType,
-  Attachment,
-  AIConfig,
-  ToolCallInfo
+  AIConfig
 } from './chat-frontend-type'
 
 /**
@@ -38,17 +36,17 @@ export type DbMessage = {
 }
 
 /**
- * 数据库 Attachment 类型
+ * 附件数据（包含数据库字段）
  */
-export type DbAttachment = {
-  id: bigint
-  messageId: bigint
-  type: string
-  name: string
-  mimeType: string
-  size: number
-  path: string            // 文件路径（替代 data）
-  createdAt: Date
+export interface Attachment {
+  id: bigint              // 唯一标识 (snowflake)
+  type: AttachmentType    // 附件类型
+  name: string            // 文件名
+  mimeType: string        // MIME 类型 (e.g., 'image/png')
+  size: number            // 文件大小 (bytes)
+  path: string            // 文件路径（相对路径，用于存储和访问）
+  messageId?: bigint      // 所属消息 ID（逻辑外键，可选，创建时不需要）
+  createdAt?: Date        // 创建时间（可选，创建时不需要）
 }
 
 /**

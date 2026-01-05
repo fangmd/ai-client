@@ -1,12 +1,12 @@
 import { prisma } from '@/main/common/db/prisma'
 import { generateUUID } from '@/main/utils/snowflake'
 import { deleteFile } from '@/main/utils/file-storage'
-import type { DbAttachment, CreateAttachmentData } from '@/types'
+import type { Attachment, CreateAttachmentData } from '@/types'
 
 /**
  * 创建附件
  */
-export async function createAttachment(data: CreateAttachmentData): Promise<DbAttachment> {
+export async function createAttachment(data: CreateAttachmentData): Promise<Attachment> {
   return prisma.attachment.create({
     data: {
       id: generateUUID().valueOf(),
@@ -23,8 +23,8 @@ export async function createAttachment(data: CreateAttachmentData): Promise<DbAt
 /**
  * 批量创建附件
  */
-export async function createAttachments(attachments: CreateAttachmentData[]): Promise<DbAttachment[]> {
-  const results: DbAttachment[] = []
+export async function createAttachments(attachments: CreateAttachmentData[]): Promise<Attachment[]> {
+  const results: Attachment[] = []
   for (const data of attachments) {
     const attachment = await createAttachment(data)
     results.push(attachment)
@@ -35,7 +35,7 @@ export async function createAttachments(attachments: CreateAttachmentData[]): Pr
 /**
  * 根据消息 ID 查询附件列表
  */
-export async function listAttachmentsByMessageId(messageId: bigint): Promise<DbAttachment[]> {
+export async function listAttachmentsByMessageId(messageId: bigint): Promise<Attachment[]> {
   return prisma.attachment.findMany({
     where: { messageId },
     orderBy: { createdAt: 'asc' }
@@ -45,13 +45,13 @@ export async function listAttachmentsByMessageId(messageId: bigint): Promise<DbA
 /**
  * 根据多个消息 ID 批量查询附件
  */
-export async function listAttachmentsByMessageIds(messageIds: bigint[]): Promise<Map<bigint, DbAttachment[]>> {
+export async function listAttachmentsByMessageIds(messageIds: bigint[]): Promise<Map<bigint, Attachment[]>> {
   const attachments = await prisma.attachment.findMany({
     where: { messageId: { in: messageIds } },
     orderBy: { createdAt: 'asc' }
   })
 
-  const map = new Map<bigint, DbAttachment[]>()
+  const map = new Map<bigint, Attachment[]>()
   for (const attachment of attachments) {
     const list = map.get(attachment.messageId) || []
     list.push(attachment)
@@ -83,7 +83,7 @@ export async function deleteAttachmentsByMessageId(messageId: bigint): Promise<v
 /**
  * 根据 ID 查询附件
  */
-export async function getAttachmentById(id: bigint): Promise<DbAttachment | null> {
+export async function getAttachmentById(id: bigint): Promise<Attachment | null> {
   return prisma.attachment.findUnique({
     where: { id }
   })

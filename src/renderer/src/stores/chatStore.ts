@@ -346,13 +346,25 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   /**
    * 追加本地消息内容（不写入数据库）
+   * 优化：使用 findIndex 查找消息，避免遍历整个数组
    */
   appendToLocalMessage: (id: bigint, content) => {
-    set((state) => ({
-      messages: state.messages.map((m) =>
-        m.id === id ? { ...m, content: m.content + content } : m
-      )
-    }))
+    set((state) => {
+      const messageIndex = state.messages.findIndex((m) => m.id === id)
+      if (messageIndex === -1) {
+        // 消息不存在，直接返回原状态
+        return state
+      }
+      
+      // 创建新数组，只更新目标消息
+      const newMessages = [...state.messages]
+      newMessages[messageIndex] = {
+        ...newMessages[messageIndex],
+        content: newMessages[messageIndex].content + content
+      }
+      
+      return { messages: newMessages }
+    })
   },
 
   // ========== 流式消息控制 ==========

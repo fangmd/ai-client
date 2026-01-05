@@ -269,7 +269,8 @@ export class OpenAIProvider implements AIProvider {
         signal: abortSignal
       })
 
-      logDebug('Responses API stream connection established, starting to process chunks')
+      // 注释掉流式输出时的日志记录，避免频繁 I/O 导致卡顿
+      // logDebug('Responses API stream connection established, starting to process chunks')
       let chunkCount = 0
 
       // 用于跟踪工具调用状态
@@ -296,10 +297,11 @@ export class OpenAIProvider implements AIProvider {
         // Responses API 使用不同的事件类型
         const chunkType = (chunk as any).type
 
-        logInfo('OpenAI Responses API stream chat chunk received', {
-          chunkType,
-          chunk
-        })
+        // 注释掉流式输出时的日志记录，避免频繁 I/O 导致卡顿
+        // logInfo('OpenAI Responses API stream chat chunk received', {
+        //   chunkType,
+        //   chunk
+        // })
 
         switch (chunkType) {
           // 1. 输出项添加（工具调用或 AI 消息开始）
@@ -316,7 +318,8 @@ export class OpenAIProvider implements AIProvider {
               toolCallsMap.set(event.item.id, toolInfo)
               callbacks.onToolCallStart?.(toolInfo)
 
-              logDebug('Tool call started', toolInfo)
+              // 注释掉流式输出时的日志记录，避免频繁 I/O 导致卡顿
+              // logDebug('Tool call started', toolInfo)
             } else if (event.item?.type === 'file_search_call') {
               const toolInfo: ToolCallInfo = {
                 itemId: event.item.id,
@@ -328,7 +331,8 @@ export class OpenAIProvider implements AIProvider {
               toolCallsMap.set(event.item.id, toolInfo)
               callbacks.onToolCallStart?.(toolInfo)
 
-              logDebug('Tool call started', toolInfo)
+              // 注释掉流式输出时的日志记录，避免频繁 I/O 导致卡顿
+              // logDebug('Tool call started', toolInfo)
             } else if (event.item?.type === 'function_call') {
               // Function Calling 工具调用
               const callId = (event.item as any).call_id || event.item.id
@@ -352,14 +356,16 @@ export class OpenAIProvider implements AIProvider {
               })
               callbacks.onToolCallStart?.(toolInfo)
 
-              logDebug('Function call started', { toolInfo, callId })
+              // 注释掉流式输出时的日志记录，避免频繁 I/O 导致卡顿
+              // logDebug('Function call started', { toolInfo, callId })
             } else if (event.item?.type === 'message' && event.item?.role === 'assistant') {
               // AI 消息开始
-              logDebug('AI assistant message started', {
-                itemId: event.item.id,
-                type: event.item.type,
-                role: event.item.role
-              })
+              // 注释掉流式输出时的日志记录，避免频繁 I/O 导致卡顿
+              // logDebug('AI assistant message started', {
+              //   itemId: event.item.id,
+              //   type: event.item.type,
+              //   role: event.item.role
+              // })
               callbacks.onAssistantMessageStart?.({
                 id: event.item.id,
                 type: event.item.type,
@@ -387,7 +393,8 @@ export class OpenAIProvider implements AIProvider {
               toolInfo.status = 'in_progress'
               callbacks.onToolCallProgress?.(toolInfo)
 
-              logDebug('Tool call in progress', toolInfo)
+              // 注释掉流式输出时的日志记录，避免频繁 I/O 导致卡顿
+              // logDebug('Tool call in progress', toolInfo)
             }
             break
           }
@@ -400,7 +407,8 @@ export class OpenAIProvider implements AIProvider {
               toolInfo.status = 'searching'
               callbacks.onToolCallProgress?.(toolInfo)
 
-              logDebug('Tool call searching', toolInfo)
+              // 注释掉流式输出时的日志记录，避免频繁 I/O 导致卡顿
+              // logDebug('Tool call searching', toolInfo)
             }
             break
           }
@@ -412,7 +420,8 @@ export class OpenAIProvider implements AIProvider {
             if (toolInfo) {
               toolInfo.status = 'completed'
               // 暂不调用 onToolCallComplete，等待 output_item.done 获取完整信息
-              logDebug('Tool call completed (waiting for details)', toolInfo)
+              // 注释掉流式输出时的日志记录，避免频繁 I/O 导致卡顿
+              // logDebug('Tool call completed (waiting for details)', toolInfo)
             }
             break
           }
@@ -505,9 +514,10 @@ export class OpenAIProvider implements AIProvider {
             if (event.text) {
               // 保存完整文本，用于替换之前累积的 delta
               completeText = event.text
-              logDebug('Received complete text from output_text.done', {
-                textLength: event.text.length
-              })
+              // 注释掉流式输出时的日志记录，避免频繁 I/O 导致卡顿
+              // logDebug('Received complete text from output_text.done', {
+              //   textLength: event.text.length
+              // })
             }
             break
           }
@@ -518,9 +528,10 @@ export class OpenAIProvider implements AIProvider {
             if (event.part?.type === 'output_text' && event.part?.text) {
               // 保存完整文本，用于替换之前累积的 delta
               completeText = event.part.text
-              logDebug('Received complete text from content_part.done', {
-                textLength: event.part.text.length
-              })
+              // 注释掉流式输出时的日志记录，避免频繁 I/O 导致卡顿
+              // logDebug('Received complete text from content_part.done', {
+              //   textLength: event.part.text.length
+              // })
             }
             break
           }

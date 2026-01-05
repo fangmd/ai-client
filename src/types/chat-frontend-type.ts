@@ -57,17 +57,8 @@ export type ToolCallInfo =
  */
 export type AttachmentType = 'image' | 'file'
 
-/**
- * 附件数据
- */
-export interface Attachment {
-  id: bigint              // 唯一标识 (snowflake)
-  type: AttachmentType    // 附件类型
-  name: string            // 文件名
-  mimeType: string        // MIME 类型 (e.g., 'image/png')
-  size: number            // 文件大小 (bytes)
-  path: string            // 文件路径（相对路径，用于存储和访问）
-}
+// Attachment 类型从 chat-db-type 导入
+export type { Attachment } from './chat-db-type'
 
 /**
  * AI 配置类型（前端）

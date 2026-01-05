@@ -183,6 +183,7 @@ export const useAIChat = ({ config, defaultProviderId }: UseAIChatOptions) => {
     unsubscribeRefs.current.push(unsubscribeAssistantMessageStart)
 
     // 监听流式数据块
+    // 后端已经做了批处理，前端直接更新状态即可
     const unsubscribeChunk = window.electron.ipcRenderer.on(
       IPC_CHANNELS.ai.streamChunk,
       (_event, data: { requestId: string; chunk: string }) => {

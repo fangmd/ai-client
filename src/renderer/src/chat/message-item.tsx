@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react'
 import type { DbMessageWithAttachments, Attachment } from '@/types'
 import { ToolCallItem } from './tool-call-item'
 import { getFileDataUri } from '@renderer/utils/file'
+import { logDebug, logError } from '@renderer/utils'
 interface Props {
   message: DbMessageWithAttachments
 }
@@ -14,7 +15,7 @@ interface Props {
 export const MessageItem: React.FC<Props> = ({ message }) => {
   const [isCopied, setIsCopied] = useState(false)
 
-  // logDebug('【MessageItem】message:', message)
+  // logDebug('[MessageItem] message:', message)
 
   // 工具调用消息
   if (message.contentType === 'tool_call') {
@@ -98,16 +99,18 @@ const AttachmentImage: React.FC<{ attachment: Attachment }> = ({ attachment }) =
   const [error, setError] = useState(false)
 
   useEffect(() => {
+    // logDebug('[AttachmentImage] attachment', attachment)
     if (attachment.path) {
       setLoading(true)
       setError(false)
       getFileDataUri(attachment.path, attachment.mimeType)
         .then((src) => {
+          // logDebug('[AttachmentImage] src', src)
           setImageSrc(src)
           setLoading(false)
         })
         .catch((err) => {
-          console.error('Failed to load image:', err)
+          // logError('[AttachmentImage] error', err)
           setError(true)
           setLoading(false)
         })

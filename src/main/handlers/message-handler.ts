@@ -81,14 +81,7 @@ export class MessageHandler {
               path: a.path
             }))
             const dbAttachments = await createAttachments(attachmentData)
-            attachments = dbAttachments.map((a) => ({
-              id: a.id,
-              type: a.type as 'image' | 'file',
-              name: a.name,
-              mimeType: a.mimeType,
-              size: a.size,
-              path: a.path
-            }))
+            attachments = dbAttachments
           }
 
           // 返回消息和附件，直接使用 DbMessage 的分散工具调用字段
@@ -157,20 +150,11 @@ export class MessageHandler {
         const messageIds = messages.map((m) => m.id)
         const attachmentsMap = await listAttachmentsByMessageIds(messageIds)
 
-        // 合并消息和附件
+        // 合并消息和附件（直接使用 Attachment）
         const messagesWithAttachments = messages.map((msg) => {
           const dbAttachments = attachmentsMap.get(msg.id) || []
           const attachments: Attachment[] | undefined =
-            dbAttachments.length > 0
-              ? dbAttachments.map((a) => ({
-                  id: a.id,
-                  type: a.type as 'image' | 'file',
-                  name: a.name,
-                  mimeType: a.mimeType,
-                  size: a.size,
-                  path: a.path
-                }))
-              : undefined
+            dbAttachments.length > 0 ? dbAttachments : undefined
           
           return {
             ...msg,

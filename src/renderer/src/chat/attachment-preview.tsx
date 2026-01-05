@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import type { Attachment } from '@/types'
 import { Button } from '@renderer/components/ui/button'
 import { getFileDataUri } from '@renderer/utils/file'
+import { logDebug, logError } from '@renderer/utils'
 
 interface AttachmentPreviewProps {
   attachments: Attachment[]
@@ -33,15 +34,17 @@ const AttachmentPreviewItem: React.FC<{
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    logDebug('AttachmentPreviewItem', 'attachment', attachment)
     if (attachment.path && attachment.type === 'image') {
       setLoading(true)
       getFileDataUri(attachment.path, attachment.mimeType)
         .then((src) => {
+          // logDebug('AttachmentPreviewItem', 'src', src)
           setImageSrc(src)
           setLoading(false)
         })
         .catch((err) => {
-          console.error('Failed to load preview image:', err)
+          // logError('AttachmentPreviewItem', 'error', err)
           setLoading(false)
         })
     }
