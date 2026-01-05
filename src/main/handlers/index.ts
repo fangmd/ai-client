@@ -3,6 +3,7 @@ import { AIHandler } from './ai-handler'
 import { ChatSessionHandler } from './chat-session-handler'
 import { MessageHandler } from './message-handler'
 import { ConfigHandler } from './config-handler'
+import { FileHandler } from './file-handler'
 
 /**
  * 统一注册所有 IPC Handlers
@@ -13,6 +14,7 @@ export function registerHandlers(): void {
   ChatSessionHandler.register()
   MessageHandler.register()
   ConfigHandler.register()
+  FileHandler.register()
 }
 
 /**
@@ -24,4 +26,5 @@ export function unregisterHandlers(): void {
   ChatSessionHandler.unregister()
   MessageHandler.unregister()
   ConfigHandler.unregister()
+  FileHandler.unregister()
 }

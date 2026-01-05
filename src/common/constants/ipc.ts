@@ -59,5 +59,11 @@ export const IPC_CHANNELS = {
     getAll: 'config:get-all',
     set: 'config:set',
     delete: 'config:delete'
+  },
+  // File 模块
+  file: {
+    upload: 'file:upload',
+    select: 'file:select',
+    read: 'file:read'
   }
 } as const

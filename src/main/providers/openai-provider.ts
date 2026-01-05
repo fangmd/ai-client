@@ -2,6 +2,7 @@ import OpenAI from 'openai'
 import type { AIMessageInput, AIConfig, ToolCallInfo } from '@/types'
 import type { AIProvider, ToolType, StreamCallbacks } from './index'
 import { logInfo, logError, logDebug, logWarn } from '../utils/logger'
+import { fileToBase64 } from '../utils/file-storage'
 import {
   ResponseCreateParamsStreaming,
   ResponseTextDeltaEvent,
@@ -185,13 +186,14 @@ export class OpenAIProvider implements AIProvider {
           msg.attachments
             ?.filter((a) => a.type === 'image')
             .forEach((a) => {
+              // 从文件路径读取并转换为 Base64
+              const base64Data = fileToBase64(a.path)
+              // 构建 data URL 格式：data:image/jpeg;base64,{BASE64_DATA}
+              const imageUrl = `data:${a.mimeType};base64,${base64Data}`
               content.push({
                 type: 'input_image',
-                source: {
-                  type: 'base64',
-                  media_type: a.mimeType,
-                  data: a.data
-                }
+                image_url: imageUrl,
+                detail: 'auto'
               })
             })
 

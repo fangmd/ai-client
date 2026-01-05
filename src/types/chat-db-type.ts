@@ -47,7 +47,7 @@ export type DbAttachment = {
   name: string
   mimeType: string
   size: number
-  data: string
+  path: string            // 文件路径（替代 data）
   createdAt: Date
 }
 
@@ -79,7 +79,7 @@ export type CreateAttachmentData = {
   name: string
   mimeType: string
   size: number
-  data: string
+  path: string            // 文件路径（替代 data）
 }
 
 /**
@@ -253,5 +253,69 @@ export interface UpdateChatSessionRequest {
  */
 export interface DeleteChatSessionRequest {
   id: bigint
+}
+
+// ==================== File 相关 IPC 请求类型 ====================
+
+/**
+ * 文件上传请求参数
+ * 注意：只传递文件路径和元信息，不传递文件数据
+ */
+export interface UploadFileRequest {
+  filePath: string      // 用户选择的文件路径（绝对路径）
+  name: string          // 文件名
+  mimeType: string      // MIME 类型
+  size: number         // 文件大小 (bytes)
+}
+
+/**
+ * 文件上传响应
+ */
+export interface UploadFileResponse {
+  attachmentId: bigint  // 附件 ID
+  path: string         // 文件路径（相对路径，用于存储到数据库）
+}
+
+/**
+ * 文件选择请求参数（使用 dialog API）
+ */
+export interface SelectFilesRequest {
+  filters?: Array<{
+    name: string
+    extensions: string[]
+  }>
+  properties?: Array<'openFile' | 'openDirectory' | 'multiSelections'>
+}
+
+/**
+ * 文件选择响应中的文件信息
+ */
+export interface SelectedFileInfo {
+  path: string         // 文件路径（绝对路径）
+  name: string         // 文件名
+  size: number         // 文件大小 (bytes)
+  mimeType?: string    // MIME 类型（可选，需要根据文件扩展名推断）
+}
+
+/**
+ * 文件选择响应
+ */
+export interface SelectFilesResponse {
+  files: SelectedFileInfo[]
+}
+
+/**
+ * 读取文件请求参数（用于前端显示）
+ */
+export interface ReadFileRequest {
+  path: string         // 文件路径（相对路径或绝对路径）
+  mimeType: string    // MIME 类型
+}
+
+/**
+ * 读取文件响应
+ */
+export interface ReadFileResponse {
+  data: string         // Base64 编码的文件内容（不含 data URI 前缀）
 }
 

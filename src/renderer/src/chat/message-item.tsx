@@ -3,9 +3,10 @@ import clsx from 'clsx'
 import { Check, Copy } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import copy from 'copy-to-clipboard'
-import { useState } from 'react'
-import type { DbMessageWithAttachments } from '@/types'
+import { useState, useEffect } from 'react'
+import type { DbMessageWithAttachments, Attachment } from '@/types'
 import { ToolCallItem } from './tool-call-item'
+import { getFileDataUri } from '@renderer/utils/file'
 interface Props {
   message: DbMessageWithAttachments
 }
@@ -55,12 +56,7 @@ export const MessageItem: React.FC<Props> = ({ message }) => {
             <div className="flex gap-2 flex-wrap justify-end max-w-[80%]">
               {message.attachments.map((attachment) =>
                 attachment.type === 'image' ? (
-                  <img
-                    key={attachment.id.toString()}
-                    src={`data:${attachment.mimeType};base64,${attachment.data}`}
-                    alt={attachment.name}
-                    className="max-w-[200px] max-h-[200px] rounded-lg object-cover"
-                  />
+                  <AttachmentImage key={attachment.id.toString()} attachment={attachment} />
                 ) : null
               )}
             </div>
@@ -91,4 +87,54 @@ export const MessageItem: React.FC<Props> = ({ message }) => {
   }
 
   return <div></div>
+}
+
+/**
+ * 附件图片组件（异步加载）
+ */
+const AttachmentImage: React.FC<{ attachment: Attachment }> = ({ attachment }) => {
+  const [imageSrc, setImageSrc] = useState<string>('')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    if (attachment.path) {
+      setLoading(true)
+      setError(false)
+      getFileDataUri(attachment.path, attachment.mimeType)
+        .then((src) => {
+          setImageSrc(src)
+          setLoading(false)
+        })
+        .catch((err) => {
+          console.error('Failed to load image:', err)
+          setError(true)
+          setLoading(false)
+        })
+    }
+  }, [attachment.path, attachment.mimeType])
+
+  if (loading) {
+    return (
+      <div className="max-w-[200px] max-h-[200px] rounded-lg bg-muted flex items-center justify-center">
+        <span className="text-xs text-muted-foreground">加载中...</span>
+      </div>
+    )
+  }
+
+  if (error || !imageSrc) {
+    return (
+      <div className="max-w-[200px] max-h-[200px] rounded-lg bg-muted flex items-center justify-center">
+        <span className="text-xs text-muted-foreground">加载失败</span>
+      </div>
+    )
+  }
+
+  return (
+    <img
+      src={imageSrc}
+      alt={attachment.name}
+      className="max-w-[200px] max-h-[200px] rounded-lg object-cover"
+    />
+  )
 }

@@ -1,5 +1,6 @@
 import { prisma } from '@/main/common/db/prisma'
 import { generateUUID } from '@/main/utils/snowflake'
+import { deleteFile } from '@/main/utils/file-storage'
 import type { DbAttachment, CreateAttachmentData } from '@/types'
 
 /**
@@ -14,7 +15,7 @@ export async function createAttachment(data: CreateAttachmentData): Promise<DbAt
       name: data.name,
       mimeType: data.mimeType,
       size: data.size,
-      data: data.data
+      path: data.path
     }
   })
 }
@@ -60,9 +61,20 @@ export async function listAttachmentsByMessageIds(messageIds: bigint[]): Promise
 }
 
 /**
- * 删除消息的所有附件
+ * 删除消息的所有附件（包括文件）
  */
 export async function deleteAttachmentsByMessageId(messageId: bigint): Promise<void> {
+  // 查询附件记录
+  const attachments = await prisma.attachment.findMany({
+    where: { messageId }
+  })
+
+  // 删除文件
+  for (const attachment of attachments) {
+    deleteFile(attachment.path)
+  }
+
+  // 删除数据库记录
   await prisma.attachment.deleteMany({
     where: { messageId }
   })

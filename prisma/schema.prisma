@@ -73,7 +73,7 @@ model Attachment {
   name      String // 文件名
   mimeType  String // MIME 类型
   size      Int // 文件大小 (bytes)
-  data      String // Base64 编码的文件内容
+  path      String // 文件路径（相对路径或绝对路径）
   createdAt DateTime @default(now())
 
   @@index([messageId])

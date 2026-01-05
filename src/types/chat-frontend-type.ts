@@ -66,7 +66,7 @@ export interface Attachment {
   name: string            // 文件名
   mimeType: string        // MIME 类型 (e.g., 'image/png')
   size: number            // 文件大小 (bytes)
-  data: string            // Base64 编码的文件内容
+  path: string            // 文件路径（相对路径，用于存储和访问）
 }
 
 /**

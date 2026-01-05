@@ -10,8 +10,9 @@ import { useState, useRef, type ChangeEvent } from 'react'
 import type { AiProvider, Attachment } from '@/types'
 import { ModelSelector } from './model-selector'
 import { AttachmentPreview } from './attachment-preview'
-import { readFileAsBase64, isAllowedImageType, generateTempId } from '@renderer/utils'
-import { MAX_FILE_SIZE, MAX_ATTACHMENTS, IMAGE_ACCEPT } from '@/common/constants/file'
+import { selectFiles, uploadFile, isAllowedImageType, logInfo } from '@renderer/utils'
+import { MAX_FILE_SIZE, MAX_ATTACHMENTS } from '@/common/constants/file'
+import type { UploadFileRequest } from '@/types'
 
 interface Props {
   sendDisabled: boolean
@@ -37,7 +38,6 @@ export const ChatInput: React.FC<Props> = ({
 }) => {
   const [content, setContent] = useState('')
   const [attachments, setAttachments] = useState<Attachment[]>([])
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleSend = () => {
     if (isSending || sendDisabled || (!content.trim() && attachments.length === 0)) return
@@ -50,59 +50,71 @@ export const ChatInput: React.FC<Props> = ({
     onStop()
   }
 
-  const handleFileSelect = async (e: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-
-    for (const file of files) {
-      // 验证文件类型
-      if (!isAllowedImageType(file.type)) {
-        console.warn(`File type ${file.type} is not allowed`)
-        continue
-      }
-
-      // 验证文件大小
-      if (file.size > MAX_FILE_SIZE) {
-        console.warn(`File ${file.name} exceeds max size limit`)
-        continue
-      }
-
-      // 检查附件数量限制
-      if (attachments.length >= MAX_ATTACHMENTS) {
-        console.warn('Max attachments limit reached')
-        break
-      }
-
-      try {
-        // 读取为 Base64
-        const data = await readFileAsBase64(file)
-
-        const attachment: Attachment = {
-          id: generateTempId(),
-          type: 'image',
-          name: file.name,
-          mimeType: file.type,
-          size: file.size,
-          data
-        }
-
-        setAttachments((prev) => [...prev, attachment])
-      } catch (error) {
-        console.error('Failed to read file:', error)
-      }
-    }
-
-    // 重置文件输入
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
-    }
-  }
-
   const handleRemoveAttachment = (id: bigint) => {
     setAttachments((prev) => prev.filter((a) => a.id !== id))
   }
 
-  const handleFileButtonClick = () => {
-    fileInputRef.current?.click()
+  const handleFileButtonClick = async () => {
+    try {
+      // 通过 IPC 调用主进程的文件选择对话框
+      const selectRequest = {
+        filters: [
+          { name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp'] }
+        ],
+        properties: ['openFile', 'multiSelections'] as const
+      }
+      const result = await selectFiles(selectRequest)
+
+      if (result.files.length > 0) {
+        for (const fileInfo of result.files) {
+          // 验证文件类型
+          if (!isAllowedImageType(fileInfo.mimeType || '')) {
+            console.warn(`File type ${fileInfo.mimeType} is not allowed`)
+            continue
+          }
+
+          // 验证文件大小
+          if (fileInfo.size > MAX_FILE_SIZE) {
+            console.warn(`File ${fileInfo.name} exceeds max size limit`)
+            continue
+          }
+
+          // 检查附件数量限制
+          if (attachments.length >= MAX_ATTACHMENTS) {
+            console.warn('Max attachments limit reached')
+            break
+          }
+
+          try {
+            logInfo('Uploading file:', fileInfo)
+            // 上传文件到主进程
+            const uploadRequest: UploadFileRequest = {
+              filePath: fileInfo.path,
+              name: fileInfo.name,
+              mimeType: fileInfo.mimeType || 'image/jpeg',
+              size: fileInfo.size
+            }
+            const uploadResult = await uploadFile(uploadRequest)
+
+            if (uploadResult) {
+              const attachment: Attachment = {
+                id: uploadResult.attachmentId,
+                type: 'image',
+                name: fileInfo.name,
+                mimeType: fileInfo.mimeType || 'image/jpeg',
+                size: fileInfo.size,
+                path: uploadResult.path
+              }
+              setAttachments((prev) => [...prev, attachment])
+            }
+          } catch (error) {
+            console.error('Failed to upload file:', error)
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to select files:', error)
+    }
   }
 
   const canSend = content.trim() || attachments.length > 0
@@ -133,14 +145,6 @@ export const ChatInput: React.FC<Props> = ({
         />
 
         {/* 文件上传按钮 */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept={IMAGE_ACCEPT}
-          multiple
-          className="hidden"
-          onChange={handleFileSelect}
-        />
         <InputGroupButton
           variant="ghost"
           size="icon-xs"

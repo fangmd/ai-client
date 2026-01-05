@@ -78,7 +78,7 @@ export class MessageHandler {
               name: a.name,
               mimeType: a.mimeType,
               size: a.size,
-              data: a.data
+              path: a.path
             }))
             const dbAttachments = await createAttachments(attachmentData)
             attachments = dbAttachments.map((a) => ({
@@ -87,7 +87,7 @@ export class MessageHandler {
               name: a.name,
               mimeType: a.mimeType,
               size: a.size,
-              data: a.data
+              path: a.path
             }))
           }
 
@@ -168,7 +168,7 @@ export class MessageHandler {
                   name: a.name,
                   mimeType: a.mimeType,
                   size: a.size,
-                  data: a.data
+                  path: a.path
                 }))
               : undefined
           
