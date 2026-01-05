@@ -3,7 +3,13 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useChatStore } from '@renderer/stores/chatStore'
 import type { IpcChatSession } from '@/types'
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@renderer/components/ui/sidebar'
-import { Trash2, Plus } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '@renderer/components/ui/dropdown-menu'
+import { Trash2, Plus, MoreVertical } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 
 interface ChatSessionListProps {
@@ -52,8 +58,7 @@ export const ChatSessionList: React.FC<ChatSessionListProps> = ({ onNewChat }) =
     navigateToChat()
   }
 
-  const handleDeleteSession = async (e: React.MouseEvent, sessionId: bigint) => {
-    e.stopPropagation()
+  const handleDeleteSession = async (sessionId: bigint) => {
     await deleteSession(sessionId)
   }
 
@@ -87,19 +92,27 @@ export const ChatSessionList: React.FC<ChatSessionListProps> = ({ onNewChat }) =
             onClick={() => handleSelectSession(session)}
             isActive={session.id === currentSessionId}
             tooltip={session.title}
-            className={cn('group relative', session.id === currentSessionId && 'bg-accent')}
+            className={cn('group flex items-center gap-2', session.id === currentSessionId && 'bg-accent')}
           >
-            <div className="flex-1 min-w-0 flex flex-col items-start">
-              <span className="truncate w-full text-left">{session.title}</span>
-            </div>
-            {/* 删除按钮 - 悬浮时显示 */}
-            <div
-              onClick={(e) => handleDeleteSession(e, session.id)}
-              className="absolute right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded"
-              title="删除对话"
-            >
-              <Trash2 className="h-3 w-3 text-destructive" />
-            </div>
+            <span className="flex-1 min-w-0 truncate text-left">{session.title}</span>
+            {/* 更多菜单 */}
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                onClick={(e) => e.stopPropagation()}
+                className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-accent rounded"
+              >
+                <MoreVertical className="h-4 w-4 text-muted-foreground" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={() => handleDeleteSession(session.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span>删除对话</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </SidebarMenuButton>
         </SidebarMenuItem>
       ))}
