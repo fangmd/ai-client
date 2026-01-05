@@ -4,7 +4,7 @@ import { OpenAIProvider } from './openai-provider'
 /**
  * 工具类型
  */
-export type ToolType = 'web_search' | 'file_search' | 'terminal'
+export type ToolType = 'web_search' | 'file_search' | 'terminal' | 'read'
 
 /**
  * 流式聊天回调接口

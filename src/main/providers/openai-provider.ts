@@ -8,8 +8,10 @@ import {
   ResponseTextDeltaEvent,
   ResponseContentPartAddedEvent
 } from 'openai/resources/responses/responses.mjs'
-import { terminalToolDefinitionForResponsesAPI } from './tools/terminal-tool'
+import { terminalToolDefinition } from './tools/terminal-tool'
 import { executeTerminalCommand } from '../utils/tool-executor'
+import { readToolDefinition } from './tools/read-tool'
+import { readFile } from '../utils/file-reader'
 
 /**
  * OpenAI Provider 实现
@@ -237,7 +239,10 @@ export class OpenAIProvider implements AIProvider {
         } else if (tool === 'terminal') {
           // Function Calling 工具
           // Responses API 使用 { type: 'function', name: string, ... } 格式
-          toolsList.push(terminalToolDefinitionForResponsesAPI)
+          toolsList.push(terminalToolDefinition)
+        } else if (tool === 'read') {
+          // Function Calling 工具 - 文件读取
+          toolsList.push(readToolDefinition)
         }
       }
 
@@ -336,13 +341,29 @@ export class OpenAIProvider implements AIProvider {
             } else if (event.item?.type === 'function_call') {
               // Function Calling 工具调用
               const callId = (event.item as any).call_id || event.item.id
-              const toolInfo: ToolCallInfo = {
-                itemId: event.item.id,
-                type: 'terminal',
-                status: 'in_progress',
-                outputIndex: event.output_index,
-                timestamp: Date.now()
+              const functionName = event.item.name
+              
+              // 根据 function name 确定工具类型
+              let toolInfo: ToolCallInfo
+              if (functionName === 'read') {
+                toolInfo = {
+                  itemId: event.item.id,
+                  type: 'read',
+                  status: 'in_progress',
+                  outputIndex: event.output_index,
+                  timestamp: Date.now()
+                }
+              } else {
+                // 默认为 terminal tool
+                toolInfo = {
+                  itemId: event.item.id,
+                  type: 'terminal',
+                  status: 'in_progress',
+                  outputIndex: event.output_index,
+                  timestamp: Date.now()
+                }
               }
+              
               toolCallsMap.set(event.item.id, toolInfo)
               functionCallArgsMap.set(event.item.id, '')
               functionCallIdMap.set(event.item.id, callId)
@@ -351,7 +372,7 @@ export class OpenAIProvider implements AIProvider {
               functionCallMap.set(event.item.id, {
                 type: 'function_call' as const,
                 call_id: callId,
-                name: event.item.name,
+                name: functionName,
                 arguments: '' // 将在 arguments.done 时更新为完整的 JSON 字符串
               })
               callbacks.onToolCallStart?.(toolInfo)
@@ -454,7 +475,7 @@ export class OpenAIProvider implements AIProvider {
                 toolCallsMap
               })
 
-              if (toolInfo && functionName === 'execute_terminal_command') {
+              if (toolInfo && (functionName === 'execute_terminal_command' || functionName === 'read')) {
                 // 更新保存的 function_call 信息，包含完整的 arguments
                 const savedFunctionCall = functionCallMap.get(event.item.id)
                 if (savedFunctionCall) {
@@ -580,7 +601,173 @@ export class OpenAIProvider implements AIProvider {
       tools?: ToolType[]
     }
   ): Promise<void> {
-    if (functionCall.name === 'execute_terminal_command') {
+    if (functionCall.name === 'read') {
+      logDebug('[handleFunctionCall] Handling read function call', {
+        functionName: functionCall.name,
+        arguments: functionCall.arguments
+      })
+
+      try {
+        // 解析函数参数
+        logDebug('[handleFunctionCall] Parsing function call arguments', {
+          rawArguments: functionCall.arguments
+        })
+        const args = JSON.parse(functionCall.arguments)
+        const { filePath, offset, limit } = args
+
+        logInfo('[handleFunctionCall] File read started', {
+          filePath,
+          offset: offset || 0,
+          limit: limit || 2000,
+          messagesCount: messages.length
+        })
+
+        // 更新 toolInfo 的文件路径信息
+        if (toolInfo.type === 'read') {
+          toolInfo.filePath = filePath
+          toolInfo.offset = offset
+          toolInfo.limit = limit
+        }
+
+        logDebug('[handleFunctionCall] Tool call info updated', {
+          itemId: toolInfo.itemId,
+          filePath: toolInfo.type === 'read' ? toolInfo.filePath : undefined
+        })
+
+        // 执行文件读取
+        logDebug('[handleFunctionCall] Reading file', {
+          filePath,
+          offset,
+          limit
+        })
+        const result = await readFile(filePath, { offset, limit })
+
+        logInfo('[handleFunctionCall] File read completed', {
+          filePath: result.filePath,
+          success: result.success,
+          totalLines: result.totalLines,
+          readLines: result.readLines,
+          hasMore: result.hasMore,
+          hasAttachments: !!result.attachments?.length
+        })
+
+        logDebug('[handleFunctionCall] File read result details', {
+          content: result.content?.substring(0, 200),
+          error: result.error
+        })
+
+        // 格式化文件读取结果
+        let formattedResult: string
+        if (result.success) {
+          if (result.attachments && result.attachments.length > 0) {
+            // 图片或 PDF 文件
+            formattedResult = result.content || `${result.mimeType} file read successfully`
+          } else {
+            // 文本文件
+            formattedResult = result.content || ''
+          }
+        } else {
+          formattedResult = `Error: ${result.error}`
+        }
+
+        logDebug('[handleFunctionCall] File read result formatted', {
+          formattedResultLength: formattedResult.length
+        })
+
+        // 如果读取失败，调用 onError 通知错误并直接返回
+        if (!result.success) {
+          const errorMessage = result.error || 'File read failed'
+          const failedToolInfo: ToolCallInfo = {
+            ...toolInfo,
+            status: 'failed',
+            ...(toolInfo.type === 'read' ? {
+              filePath: result.filePath,
+              offset: result.readLines ? offset : undefined,
+              limit: result.readLines ? limit : undefined
+            } : {})
+          }
+          logWarn('[handleFunctionCall] File read failed', {
+            filePath: result.filePath,
+            error: errorMessage
+          })
+          callbacks.onError(new Error(`File read failed: ${errorMessage}`), failedToolInfo)
+          return // 失败后直接返回，不继续处理
+        }
+
+        // 读取成功，继续处理
+        // 通知工具调用完成（包含执行结果，用于保存到消息内容）
+        const completedToolInfo: ToolCallInfo = {
+          ...toolInfo,
+          status: 'completed',
+          ...(toolInfo.type === 'read' ? {
+            filePath: result.filePath,
+            offset: result.readLines ? offset : undefined,
+            limit: result.readLines ? limit : undefined
+          } : {})
+        }
+        
+        // 注意：formattedResult 会作为 tool 消息传递给 AI
+        // 但工具调用消息的 content 需要在 Handler 中更新
+        callbacks.onToolCallComplete?.(completedToolInfo, formattedResult)
+
+        logDebug('[handleFunctionCall] Tool call completed notification sent', {
+          itemId: completedToolInfo.itemId,
+          status: completedToolInfo.status
+        })
+
+        // 构建 function_call_output 消息（Responses API 格式）
+        // 注意：Responses API 使用 function_call_output 类型，而不是 tool 角色
+        const functionCallOutput = {
+          type: 'function_call_output' as const,
+          call_id: functionCall.callId,
+          output: formattedResult
+        }
+
+        // 重要：在递归调用时，需要将对应的 function_call 也包含在 input 中
+        // 这样 API 才能找到对应的 tool call
+        if (functionCall.functionCallItem) {
+          messages.push({
+            role: 'user', // 临时使用，实际会在转换时处理
+            content: JSON.stringify(functionCall.functionCallItem),
+            // 添加标记，表示这是一个 function_call 消息
+            _functionCall: functionCall.functionCallItem
+          } as any)
+        }
+
+        // 将工具结果添加到消息列表（作为 ResponseInputItem）
+        // 注意：这里需要将 function_call_output 作为 input 的一部分传递
+        messages.push({
+          role: 'user', // 临时使用 user 角色，实际会在转换时处理
+          content: JSON.stringify(functionCallOutput),
+          // 添加标记，表示这是一个 function_call_output 消息
+          _functionCallOutput: functionCallOutput
+        } as any)
+
+        logDebug('[handleFunctionCall] Function call output added to messages list', {
+          messagesCount: messages.length,
+          callId: functionCall.callId,
+          outputLength: formattedResult.length
+        })
+
+        // 递归调用，让 AI 基于结果继续回复
+        logInfo('[handleFunctionCall] Recursively calling streamChat with file read result', {
+          updatedMessagesCount: messages.length,
+          model: config.model
+        })
+        await this.streamChat(messages, config, callbacks, abortSignal, options)
+      } catch (error) {
+        logError('[handleFunctionCall] Function call execution failed', {
+          functionName: functionCall.name,
+          arguments: functionCall.arguments,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          errorName: error instanceof Error ? error.name : 'Unknown',
+          stack: error instanceof Error ? error.stack : undefined
+        })
+        const errorMessage = error instanceof Error ? error.message : 'Function call failed'
+        // 传递 toolInfo，让 handler 知道是哪个工具出错了
+        callbacks.onError(new Error(`File read execution failed: ${errorMessage}`), toolInfo)
+      }
+    } else if (functionCall.name === 'execute_terminal_command') {
       logDebug('[handleFunctionCall] Handling execute_terminal_command function call', {
         functionName: functionCall.name,
         arguments: functionCall.arguments

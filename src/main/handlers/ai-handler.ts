@@ -25,10 +25,13 @@ export class AIHandler {
     ipcMain.on(IPC_CHANNELS.ai.streamChat, async (event, request: StreamChatRequest) => {
       const { messages, config, requestId, tools, sessionId } = request
 
-      // 默认启用 terminal 工具
+      // 默认启用 terminal 工具和 read 工具
       const finalTools: string[] = tools ? [...tools] : []
       if (!finalTools.includes('terminal')) {
         finalTools.push('terminal')
+      }
+      if (!finalTools.includes('read')) {
+        finalTools.push('read')
       }
 
       logInfo('【IPC Handler】ai:streamChat called, params:', {
@@ -232,8 +235,13 @@ export class AIHandler {
               const messageId = toolCallMessageIds.get(toolInfo.itemId)
               if (messageId) {
                 try {
-                  // 对于终端工具，使用 command 字段；对于其他工具，使用 query 字段
-                  const toolQuery = toolInfo.type === 'terminal' ? toolInfo.command : toolInfo.query
+                  // 对于终端工具，使用 command 字段；对于 read 工具，使用 filePath 字段；对于其他工具，使用 query 字段
+                  const toolQuery = 
+                    toolInfo.type === 'terminal' 
+                      ? toolInfo.command 
+                      : toolInfo.type === 'read'
+                      ? toolInfo.filePath
+                      : toolInfo.query
 
                   // 对于终端工具，如果有执行结果，使用执行结果作为内容；否则使用完成消息
                   const content =

@@ -18,7 +18,7 @@ export type MessageContentType = 'text' | 'tool_call'
 /**
  * 工具类型
  */
-export type ToolType = 'web_search' | 'file_search' | 'terminal'
+export type ToolType = 'web_search' | 'file_search' | 'terminal' | 'read'
 
 /**
  * 工具调用状态
@@ -39,6 +39,20 @@ export interface TerminalToolCallInfo {
 }
 
 /**
+ * 文件读取工具调用信息
+ */
+export interface ReadToolCallInfo {
+  itemId: string              // 工具调用的唯一标识
+  type: 'read'                // 工具类型
+  status: ToolCallStatus      // 当前状态
+  filePath?: string           // 读取的文件路径（完成时才有）
+  offset?: number             // 起始行号
+  limit?: number              // 读取行数
+  outputIndex?: number        // 在输出中的索引位置
+  timestamp?: number          // 时间戳
+}
+
+/**
  * 工具调用信息
  */
 export type ToolCallInfo = 
@@ -51,6 +65,7 @@ export type ToolCallInfo =
       timestamp?: number
     }
   | TerminalToolCallInfo
+  | ReadToolCallInfo
 
 /**
  * 附件类型

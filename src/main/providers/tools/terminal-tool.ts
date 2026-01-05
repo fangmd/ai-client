@@ -9,7 +9,7 @@
 /**
  * Responses API 格式的终端工具定义
  */
-export const terminalToolDefinitionForResponsesAPI = {
+export const terminalToolDefinition = {
   type: 'function' as const,
   name: 'execute_terminal_command',
   description:
@@ -31,9 +31,3 @@ export const terminalToolDefinitionForResponsesAPI = {
     required: ['command']
   }
 }
-
-/**
- * 默认导出（为了向后兼容，使用 Responses API 格式）
- * 注意：在不同 API 中使用时需要转换格式
- */
-export const terminalToolDefinition = terminalToolDefinitionForResponsesAPI
