@@ -3,6 +3,7 @@ import type { AIConfig, Attachment } from '@/types'
 import type { IPCResponse } from '@/types'
 import { IPC_CHANNELS } from '@/common/constants/ipc'
 import { useChatStore } from '@renderer/stores/chatStore'
+import { logDebug } from '@renderer/utils'
 
 type ChatStatus = 'ready' | 'submitted' | 'error'
 
@@ -183,15 +184,42 @@ export const useAIChat = ({ config, defaultProviderId }: UseAIChatOptions) => {
     unsubscribeRefs.current.push(unsubscribeAssistantMessageStart)
 
     // 监听流式数据块
-    // 后端已经做了批处理，前端直接更新状态即可
+    // 前端节流优化：使用固定时间间隔节流，避免双重批处理导致的不平滑
+    let pendingChunks: string[] = []
+    let throttleTimer: NodeJS.Timeout | null = null
+    const THROTTLE_INTERVAL = 80 // 固定节流间隔 80ms，与后端批处理间隔一致
+    
+    const flushPendingChunks = () => {
+      if (pendingChunks.length === 0 || !assistantMessageId) {
+        throttleTimer = null
+        return
+      }
+      
+      // 合并所有待处理的 chunk
+      const combinedChunk = pendingChunks.join('')
+      pendingChunks = []
+      
+      // 更新状态
+      appendToLocalMessage(assistantMessageId, combinedChunk)
+      
+      throttleTimer = null
+    }
+    
     const unsubscribeChunk = window.electron.ipcRenderer.on(
       IPC_CHANNELS.ai.streamChunk,
       (_event, data: { requestId: string; chunk: string }) => {
+        logDebug('[useAIChat] streamChunk', data)
         if (data.requestId === requestId) {
           fullAssistantContent += data.chunk
           // 只有在 AI 消息已创建时才追加内容
           if (assistantMessageId) {
-            appendToLocalMessage(assistantMessageId, data.chunk)
+            // 累积 chunk 到待处理队列
+            pendingChunks.push(data.chunk)
+            
+            // 使用固定时间间隔节流，避免双重批处理
+            if (throttleTimer === null) {
+              throttleTimer = setTimeout(flushPendingChunks, THROTTLE_INTERVAL)
+            }
           }
         }
       }
@@ -259,6 +287,18 @@ export const useAIChat = ({ config, defaultProviderId }: UseAIChatOptions) => {
       IPC_CHANNELS.ai.streamDone,
       async (_event, data: { requestId: string; completeText?: string }) => {
         if (data.requestId === requestId) {
+          // 清理待处理的 chunk 和节流定时器
+          if (throttleTimer !== null) {
+            clearTimeout(throttleTimer)
+            throttleTimer = null
+          }
+          // 如果有待处理的 chunk，立即刷新
+          if (pendingChunks.length > 0 && assistantMessageId) {
+            const combinedChunk = pendingChunks.join('')
+            pendingChunks = []
+            appendToLocalMessage(assistantMessageId, combinedChunk)
+          }
+          
           // 如果有完整文本（来自 response.output_text.done 或 response.content_part.done），
           // 使用完整文本替换之前累积的 delta
           const finalContent = data.completeText || fullAssistantContent
@@ -292,6 +332,18 @@ export const useAIChat = ({ config, defaultProviderId }: UseAIChatOptions) => {
       IPC_CHANNELS.ai.streamError,
       async (_event, data: { requestId: string } & IPCResponse) => {
         if (data.requestId === requestId) {
+          // 清理待处理的 chunk 和节流定时器
+          if (throttleTimer !== null) {
+            clearTimeout(throttleTimer)
+            throttleTimer = null
+          }
+          // 如果有待处理的 chunk，立即刷新
+          if (pendingChunks.length > 0 && assistantMessageId) {
+            const combinedChunk = pendingChunks.join('')
+            pendingChunks = []
+            appendToLocalMessage(assistantMessageId, combinedChunk)
+          }
+          
           console.error('AI chat error:', data.msg)
 
           // 只有在 AI 消息已创建时才更新

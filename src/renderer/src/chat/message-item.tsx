@@ -3,7 +3,7 @@ import clsx from 'clsx'
 import { Check, Copy } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import copy from 'copy-to-clipboard'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, memo } from 'react'
 import type { DbMessageWithAttachments, Attachment } from '@/types'
 import { ToolCallItem } from './tool-call-item'
 import { getFileDataUri } from '@renderer/utils/file'
@@ -12,7 +12,7 @@ interface Props {
   message: DbMessageWithAttachments
 }
 
-export const MessageItem: React.FC<Props> = ({ message }) => {
+const MessageItemComponent: React.FC<Props> = ({ message }) => {
   const [isCopied, setIsCopied] = useState(false)
 
   // logDebug('[MessageItem] message:', message)
@@ -89,6 +89,29 @@ export const MessageItem: React.FC<Props> = ({ message }) => {
 
   return <div></div>
 }
+
+// 使用 React.memo 优化，只有当 message 对象引用变化时才重新渲染
+// 比较函数：只有当消息 ID、内容、状态等关键字段变化时才重新渲染
+export const MessageItem = memo(MessageItemComponent, (prevProps, nextProps) => {
+  const prev = prevProps.message
+  const next = nextProps.message
+  
+  // 如果 ID 不同，需要重新渲染
+  if (prev.id !== next.id) {
+    return false
+  }
+  
+  // 比较关键字段
+  return (
+    prev.content === next.content &&
+    prev.status === next.status &&
+    prev.role === next.role &&
+    prev.contentType === next.contentType &&
+    prev.toolStatus === next.toolStatus &&
+    prev.toolQuery === next.toolQuery &&
+    JSON.stringify(prev.attachments) === JSON.stringify(next.attachments)
+  )
+})
 
 /**
  * 附件图片组件（异步加载）

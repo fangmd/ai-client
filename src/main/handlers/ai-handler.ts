@@ -83,10 +83,11 @@ export class AIHandler {
         let assistantMessageId: bigint | null = null
 
         // IPC 批处理优化：累积 chunk 后批量发送，减少 IPC 通信频率
+        // 优化：增大批处理大小和间隔，减少通信频率，提升流畅度
         const chunkBuffer: string[] = []
         let chunkFlushTimer: NodeJS.Timeout | null = null
-        const CHUNK_BATCH_SIZE = 10 // 每批最多累积 10 个 chunk
-        const CHUNK_FLUSH_INTERVAL = 16 // 最多等待 16ms（约 60fps）后发送
+        const CHUNK_BATCH_SIZE = 25 // 每批最多累积 25 个 chunk（从 10 调整为 25）
+        const CHUNK_FLUSH_INTERVAL = 80 // 最多等待 80ms（约 12.5fps）后发送（从 16ms 调整为 80ms）
 
         const flushChunks = () => {
           if (chunkBuffer.length === 0) return
