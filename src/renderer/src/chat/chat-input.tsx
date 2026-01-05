@@ -61,7 +61,7 @@ export const ChatInput: React.FC<Props> = ({
         filters: [
           { name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp'] }
         ],
-        properties: ['openFile', 'multiSelections'] as const
+        properties: ['openFile', 'multiSelections'] as Array<'openFile' | 'openDirectory' | 'multiSelections'>
       }
       const result = await selectFiles(selectRequest)
 
