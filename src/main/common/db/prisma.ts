@@ -118,13 +118,13 @@ function createPrismaClient(): PrismaClient {
     log: isDev ? ['query', 'info', 'warn', 'error'] : ['warn', 'error']
   })
 
-  if (isDev) {
-    pC.$on('query', (e) => {
-      logInfo('Query:', e.query)
-      logInfo('Params:', e.params)
-      logInfo('Duration:', e.duration, 'ms')
-    })
-  }
+  // if (isDev) {
+  //   pC.$on('query', (e) => {
+  //     logInfo('Query:', e.query)
+  //     logInfo('Params:', e.params)
+  //     logInfo('Duration:', e.duration, 'ms')
+  //   })
+  // }
 
   // 注意：不在这里配置连接，而是在 initializeDatabase 完成后统一配置
   // 这样可以避免在数据库迁移期间产生连接冲突

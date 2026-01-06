@@ -53,6 +53,19 @@ export interface ReadToolCallInfo {
 }
 
 /**
+ * MCP 工具调用信息
+ */
+export interface McpToolCallInfo {
+  itemId: string              // 工具调用的唯一标识
+  type: 'mcp'                 // 工具类型
+  status: ToolCallStatus      // 当前状态
+  toolName?: string           // MCP 工具名称（完成时才有）
+  arguments?: Record<string, any>  // 工具参数
+  outputIndex?: number        // 在输出中的索引位置
+  timestamp?: number          // 时间戳
+}
+
+/**
  * 工具调用信息
  */
 export type ToolCallInfo = 
@@ -66,6 +79,7 @@ export type ToolCallInfo =
     }
   | TerminalToolCallInfo
   | ReadToolCallInfo
+  | McpToolCallInfo
 
 /**
  * 附件类型

@@ -12,6 +12,32 @@ import { terminalToolDefinition } from './tools/terminal-tool'
 import { executeTerminalCommand } from '../utils/tool-executor'
 import { readToolDefinition } from './tools/read-tool'
 import { readFile } from '../utils/file-reader'
+import { McpClient } from './mcp/client'
+import { getMcpToolConfigs } from './tools/mcp-config'
+
+// MCP 客户端单例
+let mcpClient: McpClient | null = null
+
+/**
+ * 初始化 MCP 客户端（在应用启动时调用）
+ */
+export async function initializeMcpClient(): Promise<void> {
+  if (getMcpToolConfigs().length === 0) {
+    logInfo('No MCP servers configured, skipping MCP client initialization')
+    return
+  }
+  
+  try {
+    logInfo('Initializing MCP client...')
+    mcpClient = new McpClient()
+    await mcpClient.initialize()
+    logInfo('MCP client initialized successfully')
+  } catch (error) {
+    logError('Failed to initialize MCP client', {
+      error: error instanceof Error ? error.message : String(error)
+    })
+  }
+}
 
 /**
  * OpenAI Provider 实现
@@ -245,6 +271,13 @@ export class OpenAIProvider implements AIProvider {
           toolsList.push(readToolDefinition)
         }
       }
+      
+      // 新增：添加 MCP 工具（转换为 Function Calling 格式）
+      if (mcpClient) {
+        const mcpTools = mcpClient.getToolsAsFunctionCalling()
+        toolsList.push(...mcpTools)
+        logDebug('MCP tools added to request', { count: mcpTools.length })
+      }
 
       // 创建流式请求
       logDebug('Creating stream request to OpenAI Responses API', {
@@ -349,6 +382,15 @@ export class OpenAIProvider implements AIProvider {
                 toolInfo = {
                   itemId: event.item.id,
                   type: 'read',
+                  status: 'in_progress',
+                  outputIndex: event.output_index,
+                  timestamp: Date.now()
+                }
+              } else if (functionName.startsWith('mcp_')) {
+                // MCP 工具
+                toolInfo = {
+                  itemId: event.item.id,
+                  type: 'mcp',
                   status: 'in_progress',
                   outputIndex: event.output_index,
                   timestamp: Date.now()
@@ -475,7 +517,7 @@ export class OpenAIProvider implements AIProvider {
                 toolCallsMap
               })
 
-              if (toolInfo && (functionName === 'execute_terminal_command' || functionName === 'read')) {
+              if (toolInfo && (functionName === 'execute_terminal_command' || functionName === 'read' || functionName.startsWith('mcp_'))) {
                 // 更新保存的 function_call 信息，包含完整的 arguments
                 const savedFunctionCall = functionCallMap.get(event.item.id)
                 if (savedFunctionCall) {
@@ -924,6 +966,100 @@ export class OpenAIProvider implements AIProvider {
         const errorMessage = error instanceof Error ? error.message : 'Function call failed'
         // 传递 toolInfo，让 handler 知道是哪个工具出错了
         callbacks.onError(new Error(`Terminal command execution failed: ${errorMessage}`), toolInfo)
+      }
+    } else if (functionCall.name.startsWith('mcp_')) {
+      // MCP 工具调用处理
+      logDebug('[handleFunctionCall] Handling MCP function call', {
+        functionName: functionCall.name,
+        arguments: functionCall.arguments
+      })
+
+      if (!mcpClient) {
+        const errorMessage = 'MCP client not initialized'
+        logError('[handleFunctionCall] MCP client not initialized')
+        callbacks.onError(new Error(errorMessage), toolInfo)
+        return
+      }
+
+      try {
+        // 解析工具名称：mcp_{serverLabel}_{toolName}
+        const parts = functionCall.name.split('_')
+        if (parts.length < 3) {
+          throw new Error(`Invalid MCP tool name: ${functionCall.name}`)
+        }
+
+        const serverLabel = parts[1]
+        const toolName = parts.slice(2).join('_')
+        const args = JSON.parse(functionCall.arguments)
+
+        logDebug('[handleFunctionCall] Calling MCP tool', {
+          serverLabel,
+          toolName,
+          arguments: args
+        })
+
+        // 调用 MCP 工具
+        const result = await mcpClient.callTool(serverLabel, toolName, args)
+
+        // 格式化结果
+        const formattedResult = typeof result === 'string' 
+          ? result 
+          : JSON.stringify(result, null, 2)
+
+        // 更新工具调用信息
+        const completedToolInfo: ToolCallInfo = {
+          ...toolInfo,
+          status: 'completed',
+          ...(toolInfo.type === 'mcp' ? {
+            toolName: functionCall.name,
+            arguments: args
+          } : {})
+        }
+
+        callbacks.onToolCallComplete?.(completedToolInfo, formattedResult)
+
+        // 构建 function_call_output 消息
+        const functionCallOutput = {
+          type: 'function_call_output' as const,
+          call_id: functionCall.callId,
+          output: formattedResult
+        }
+
+        // 递归调用
+        if (functionCall.functionCallItem) {
+          messages.push({
+            role: 'user',
+            content: JSON.stringify(functionCall.functionCallItem),
+            _functionCall: functionCall.functionCallItem
+          } as any)
+        }
+
+        messages.push({
+          role: 'user',
+          content: JSON.stringify(functionCallOutput),
+          _functionCallOutput: functionCallOutput
+        } as any)
+
+        logDebug('[handleFunctionCall] MCP tool call completed, recursively calling streamChat', {
+          messagesCount: messages.length,
+          callId: functionCall.callId
+        })
+
+        await this.streamChat(messages, config, callbacks, abortSignal, options)
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        logError('[handleFunctionCall] MCP tool call failed', {
+          toolName: functionCall.name,
+          error: errorMessage,
+          stack: error instanceof Error ? error.stack : undefined
+        })
+
+        const failedToolInfo: ToolCallInfo = {
+          ...toolInfo,
+          status: 'failed'
+        }
+
+        callbacks.onError(new Error(`MCP tool call failed: ${errorMessage}`), failedToolInfo)
       }
     }
   }

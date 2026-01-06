@@ -5,6 +5,7 @@ import icon from '../../resources/icon.png?asset'
 import { registerHandlers, unregisterHandlers } from './handlers'
 import { initializeDatabase, disconnectDatabase } from './common/db/prisma'
 import { initializeLogger, logError, logInfo } from './utils'
+import { initializeMcpClient } from './providers/openai-provider'
 ;(BigInt.prototype as any).toJSON = function () {
   return this.toString()
 }
@@ -101,7 +102,17 @@ if (!gotTheLock) {
     registerHandlers()
     logInfo('Handlers registered')
 
-    // 第四步：创建窗口
+    // 第四步：初始化 MCP 客户端
+    try {
+      logInfo('Initializing MCP client...')
+      await initializeMcpClient()
+      logInfo('MCP client initialization completed')
+    } catch (error) {
+      logError('Failed to initialize MCP client:', error)
+      // MCP 初始化失败不影响应用启动，继续运行
+    }
+
+    // 第五步：创建窗口
     createWindow()
 
     app.on('activate', function () {
