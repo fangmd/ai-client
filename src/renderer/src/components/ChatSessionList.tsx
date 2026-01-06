@@ -130,14 +130,14 @@ export const ChatSessionList: React.FC<ChatSessionListProps> = ({ onNewChat }) =
             onClick={() => handleSelectSession(session)}
             isActive={session.id === currentSessionId}
             tooltip={session.title}
-            className={cn('group flex items-center gap-2', session.id === currentSessionId && 'bg-accent')}
+            className={cn('flex items-center gap-2', session.id === currentSessionId && 'bg-accent')}
           >
             <span className="flex-1 min-w-0 truncate text-left">{session.title}</span>
             {/* 更多菜单 */}
             <DropdownMenu>
               <DropdownMenuTrigger
                 onClick={(e) => e.stopPropagation()}
-                className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-accent rounded"
+                className="shrink-0 opacity-0 group-hover/menu-item:opacity-100 transition-opacity p-1 hover:bg-accent rounded"
               >
                 <MoreVertical className="h-4 w-4 text-muted-foreground" />
               </DropdownMenuTrigger>
