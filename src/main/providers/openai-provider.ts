@@ -303,10 +303,10 @@ export class OpenAIProvider implements AIProvider {
         const chunkType = (chunk as any).type
 
         // 注释掉流式输出时的日志记录，避免频繁 I/O 导致卡顿
-        // logInfo('OpenAI Responses API stream chat chunk received', {
-        //   chunkType,
-        //   chunk
-        // })
+        logInfo('OpenAI Responses API stream chat chunk received', {
+          chunkType,
+          chunk
+        })
 
         switch (chunkType) {
           // 1. 输出项添加（工具调用或 AI 消息开始）

@@ -11,6 +11,7 @@ import {
 } from '@renderer/components/ui/dropdown-menu'
 import { Trash2, Plus, MoreVertical } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
+import { logDebug } from '@renderer/utils'
 
 interface ChatSessionListProps {
   onNewChat: () => void
@@ -43,14 +44,51 @@ export const ChatSessionList: React.FC<ChatSessionListProps> = ({ onNewChat }) =
   }
 
   const handleSelectSession = (session: IpcChatSession) => {
+    const startTime = performance.now()
+    logDebug('[SessionSwitch] handleSelectSession start', {
+      sessionId: String(session.id),
+      sessionTitle: session.title,
+      currentSessionId: currentSessionId ? String(currentSessionId) : null,
+      timestamp: new Date().toISOString()
+    })
+
     if (session.id !== currentSessionId) {
       // 如果正在处理流式消息，先停止
       if (isSending) {
+        const stopStartTime = performance.now()
+        logDebug('[SessionSwitch] stopStream start')
         stopStream()
+        logDebug('[SessionSwitch] stopStream end', {
+          duration: `${(performance.now() - stopStartTime).toFixed(2)}ms`
+        })
       }
+
+      const setSessionStartTime = performance.now()
+      logDebug('[SessionSwitch] setCurrentSession start', {
+        sessionId: String(session.id)
+      })
       setCurrentSession(session.id)
+      logDebug('[SessionSwitch] setCurrentSession end', {
+        sessionId: String(session.id),
+        duration: `${(performance.now() - setSessionStartTime).toFixed(2)}ms`
+      })
+    } else {
+      logDebug('[SessionSwitch] session already selected, skipping setCurrentSession')
     }
+
+    const navigateStartTime = performance.now()
+    logDebug('[SessionSwitch] navigateToChat start', {
+      currentPath: location.pathname
+    })
     navigateToChat()
+    logDebug('[SessionSwitch] navigateToChat end', {
+      duration: `${(performance.now() - navigateStartTime).toFixed(2)}ms`
+    })
+
+    logDebug('[SessionSwitch] handleSelectSession end', {
+      sessionId: String(session.id),
+      totalDuration: `${(performance.now() - startTime).toFixed(2)}ms`
+    })
   }
 
   const handleNewChat = () => {

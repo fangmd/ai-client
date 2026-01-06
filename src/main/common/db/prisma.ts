@@ -45,7 +45,7 @@ function getDatabasePath(): string {
 
 /**
  * 配置数据库优化选项
- * 包括 WAL 模式、缓存、同步模式等
+ * 包括 WAL 模式、缓存、同步模式等性能优化设置
  */
 async function configureConnectionSettings(client: PrismaClient): Promise<void> {
   try {
@@ -54,20 +54,43 @@ async function configureConnectionSettings(client: PrismaClient): Promise<void> 
     logInfo('SQLite busy_timeout set to 30 seconds')
 
     // 启用 WAL 模式（持久化设置，只需设置一次）
+    // WAL 模式提供更好的并发性能和更快的读取速度
     await client.$executeRawUnsafe('PRAGMA journal_mode = WAL')
     logInfo('SQLite WAL mode enabled')
 
-    // 设置缓存大小为 32MB（负数表示 KB）
-    await client.$executeRawUnsafe('PRAGMA cache_size = -32000')
-    logInfo('SQLite cache size set to 32MB')
+    // 设置缓存大小为 64MB（负数表示 KB，-64000 = 64MB）
+    // 增加缓存可以显著提高查询性能，特别是对于频繁访问的数据
+    await client.$executeRawUnsafe('PRAGMA cache_size = -64000')
+    logInfo('SQLite cache size set to 64MB')
 
     // 设置同步模式为 NORMAL（WAL 模式下的推荐设置）
+    // NORMAL 模式在 WAL 下提供良好的性能和数据安全性平衡
     await client.$executeRawUnsafe('PRAGMA synchronous = NORMAL')
     logInfo('SQLite synchronous mode set to NORMAL')
 
     // 启用外键约束检查
     await client.$executeRawUnsafe('PRAGMA foreign_keys = ON')
     logInfo('SQLite foreign keys enabled')
+
+    // 优化临时文件存储（使用内存）
+    // MEMORY 模式将临时表存储在内存中，提高性能
+    await client.$executeRawUnsafe('PRAGMA temp_store = MEMORY')
+    logInfo('SQLite temp_store set to MEMORY')
+
+    // 设置页面大小（默认通常是 4096，但可以优化）
+    // 较大的页面大小可以提高大数据的查询性能
+    await client.$executeRawUnsafe('PRAGMA page_size = 4096')
+    logInfo('SQLite page_size set to 4096')
+
+    // 启用查询优化器统计信息
+    // 帮助 SQLite 优化器选择更好的查询计划
+    await client.$executeRawUnsafe('PRAGMA optimize')
+    logInfo('SQLite optimize pragma executed')
+
+    // 设置自动清理 WAL 文件
+    // 当 WAL 文件超过 100MB 时自动清理
+    await client.$executeRawUnsafe('PRAGMA wal_autocheckpoint = 10000')
+    logInfo('SQLite wal_autocheckpoint set to 10000 pages (~40MB)')
   } catch (error) {
     logError('Failed to configure connection settings:', error)
     throw error

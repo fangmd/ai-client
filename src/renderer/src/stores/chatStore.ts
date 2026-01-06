@@ -6,6 +6,7 @@ import type {
   DbMessageWithAttachments
 } from '@/types'
 import { IPC_CHANNELS, SUCCESS_CODE } from '@/common/constants/ipc'
+import { logDebug } from '@renderer/utils'
 
 interface ChatState {
   // 当前会话
@@ -118,26 +119,89 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   /**
    * 加载单个会话（包含消息）
+   * 注意：loadingMessages 可能在 setCurrentSession 中已经设置为 true
    */
   loadSession: async (id: bigint) => {
-    set({ loadingMessages: true })
+    const loadStartTime = performance.now()
+    const sessionIdStr = String(id)
+    logDebug('[SessionSwitch] loadSession start', {
+      sessionId: sessionIdStr,
+      timestamp: new Date().toISOString()
+    })
+
+    // 如果 loadingMessages 已经是 true（由 setCurrentSession 设置），则不需要重复设置
+    const currentState = get()
+    const stateCheckTime = performance.now()
+    if (!currentState.loadingMessages) {
+      set({ loadingMessages: true })
+      logDebug('[SessionSwitch] loadSession set loadingMessages=true', {
+        sessionId: sessionIdStr,
+        duration: `${(performance.now() - stateCheckTime).toFixed(2)}ms`
+      })
+    } else {
+      logDebug('[SessionSwitch] loadSession loadingMessages already true', {
+        sessionId: sessionIdStr,
+        duration: `${(performance.now() - stateCheckTime).toFixed(2)}ms`
+      })
+    }
+
     try {
+      const ipcStartTime = performance.now()
+      logDebug('[SessionSwitch] loadSession IPC invoke start', {
+        sessionId: sessionIdStr,
+        channel: IPC_CHANNELS.chatSession.get
+      })
+
       const response = (await window.electron.ipcRenderer.invoke(
         IPC_CHANNELS.chatSession.get,
         { id }
       )) as IPCResponse<IpcChatSession & { messages: DbMessageWithAttachments[] }>
 
+      const ipcEndTime = performance.now()
+      const ipcDuration = ipcEndTime - ipcStartTime
+      logDebug('[SessionSwitch] loadSession IPC invoke end', {
+        sessionId: sessionIdStr,
+        duration: `${ipcDuration.toFixed(2)}ms`,
+        responseCode: response.code,
+        hasData: !!response.data,
+        messagesCount: response.data?.messages?.length || 0
+      })
+
+      const updateStateStartTime = performance.now()
       if (response.code === SUCCESS_CODE && response.data) {
         set({
           currentSessionId: id,
           messages: response.data.messages,
-          currentAiProviderId: response.data.aiProviderId
+          currentAiProviderId: response.data.aiProviderId,
+          loadingMessages: false
+        })
+        logDebug('[SessionSwitch] loadSession state update success', {
+          sessionId: sessionIdStr,
+          messagesCount: response.data.messages.length,
+          aiProviderId: String(response.data.aiProviderId),
+          updateDuration: `${(performance.now() - updateStateStartTime).toFixed(2)}ms`,
+          totalDuration: `${(performance.now() - loadStartTime).toFixed(2)}ms`
+        })
+      } else {
+        // 加载失败时，保持 currentSessionId，但清空消息
+        set({ messages: [], loadingMessages: false })
+        logDebug('[SessionSwitch] loadSession state update failed (invalid response)', {
+          sessionId: sessionIdStr,
+          responseCode: response.code,
+          updateDuration: `${(performance.now() - updateStateStartTime).toFixed(2)}ms`,
+          totalDuration: `${(performance.now() - loadStartTime).toFixed(2)}ms`
         })
       }
     } catch (error) {
+      const errorTime = performance.now()
       console.error('Failed to load session:', error)
-    } finally {
-      set({ loadingMessages: false })
+      // 加载失败时，保持 currentSessionId，但清空消息
+      set({ messages: [], loadingMessages: false })
+      logDebug('[SessionSwitch] loadSession error', {
+        sessionId: sessionIdStr,
+        error: error instanceof Error ? error.message : String(error),
+        totalDuration: `${(errorTime - loadStartTime).toFixed(2)}ms`
+      })
     }
   },
 
@@ -296,12 +360,45 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   /**
    * 设置当前会话
+   * 优化：立即更新 currentSessionId 和清空消息，然后异步加载数据
+   * 这样可以立即响应界面切换，避免用户感觉切换慢
    */
   setCurrentSession: (sessionId) => {
+    const setStartTime = performance.now()
+    const sessionIdStr = sessionId ? String(sessionId) : null
+    logDebug('[SessionSwitch] setCurrentSession start', {
+      sessionId: sessionIdStr,
+      timestamp: new Date().toISOString()
+    })
+
     if (sessionId) {
+      const updateStateStartTime = performance.now()
+      // 立即更新 currentSessionId 和清空消息，让界面立即响应
+      set({ currentSessionId: sessionId, messages: [], loadingMessages: true })
+      const updateStateDuration = performance.now() - updateStateStartTime
+      logDebug('[SessionSwitch] setCurrentSession state updated', {
+        sessionId: sessionIdStr,
+        updateDuration: `${updateStateDuration.toFixed(2)}ms`
+      })
+
+      // 异步加载会话数据
+      const loadStartTime = performance.now()
+      logDebug('[SessionSwitch] setCurrentSession calling loadSession', {
+        sessionId: sessionIdStr
+      })
       get().loadSession(sessionId)
+      logDebug('[SessionSwitch] setCurrentSession loadSession called (async)', {
+        sessionId: sessionIdStr,
+        callDuration: `${(performance.now() - loadStartTime).toFixed(2)}ms`,
+        totalDuration: `${(performance.now() - setStartTime).toFixed(2)}ms`
+      })
     } else {
+      const updateStateStartTime = performance.now()
       set({ currentSessionId: null, messages: [] })
+      logDebug('[SessionSwitch] setCurrentSession cleared', {
+        updateDuration: `${(performance.now() - updateStateStartTime).toFixed(2)}ms`,
+        totalDuration: `${(performance.now() - setStartTime).toFixed(2)}ms`
+      })
     }
   },
 

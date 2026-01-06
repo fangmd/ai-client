@@ -73,6 +73,55 @@ export const Chat: React.FC = () => {
   const updateSession = useChatStore((state) => state.updateSession)
   const currentSessionId = useChatStore((state) => state.currentSessionId)
 
+  // 监控消息和加载状态变化，用于性能分析
+  const prevLoadingMessagesRef = useRef(loadingMessages)
+  const prevMessagesLengthRef = useRef(messages.length)
+  const prevCurrentSessionIdRef = useRef(currentSessionId)
+
+  useEffect(() => {
+    const renderStartTime = performance.now()
+    const sessionIdChanged = prevCurrentSessionIdRef.current !== currentSessionId
+    const loadingChanged = prevLoadingMessagesRef.current !== loadingMessages
+    const messagesChanged = prevMessagesLengthRef.current !== messages.length
+
+    if (sessionIdChanged || loadingChanged || messagesChanged) {
+      logDebug('[SessionSwitch] Chat component state changed', {
+        sessionId: currentSessionId ? String(currentSessionId) : null,
+        prevSessionId: prevCurrentSessionIdRef.current ? String(prevCurrentSessionIdRef.current) : null,
+        loadingMessages,
+        prevLoadingMessages: prevLoadingMessagesRef.current,
+        messagesCount: messages.length,
+        prevMessagesCount: prevMessagesLengthRef.current,
+        timestamp: new Date().toISOString()
+      })
+    }
+
+    // 监控加载完成
+    if (prevLoadingMessagesRef.current && !loadingMessages && messages.length > 0) {
+      logDebug('[SessionSwitch] Chat messages loaded and ready to render', {
+        sessionId: currentSessionId ? String(currentSessionId) : null,
+        messagesCount: messages.length,
+        timestamp: new Date().toISOString()
+      })
+    }
+
+    prevLoadingMessagesRef.current = loadingMessages
+    prevMessagesLengthRef.current = messages.length
+    prevCurrentSessionIdRef.current = currentSessionId
+
+    // 使用 requestAnimationFrame 记录渲染完成时间
+    requestAnimationFrame(() => {
+      const renderDuration = performance.now() - renderStartTime
+      if (sessionIdChanged || loadingChanged || messagesChanged) {
+        logDebug('[SessionSwitch] Chat component render completed', {
+          sessionId: currentSessionId ? String(currentSessionId) : null,
+          renderDuration: `${renderDuration.toFixed(2)}ms`,
+          messagesCount: messages.length
+        })
+      }
+    })
+  }, [currentSessionId, loadingMessages, messages.length])
+
   const handleProviderChange = useCallback(
     async (providerId: bigint) => {
       // 更新本地状态
