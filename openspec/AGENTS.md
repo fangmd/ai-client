@@ -454,3 +454,13 @@ openspec archive <change-id> [--yes|-y]  # Mark complete (add --yes for automati
 ```
 
 Remember: Specs are truth. Changes are proposals. Keep them in sync.
+
+## Language and Communication
+
+- Default to Simplified Chinese for all OpenSpec artifacts and interaction, including proposal.md, design.md, tasks.md, and spec/spec-delta spec.md files.
+- For tool compatibility, keep only OpenSpec structural tokens/headings in English:
+  - Requirement/Scenario headings: ### Requirement:, #### Scenario:
+  - Requirement section headings: ## ADDED|MODIFIED|REMOVED|RENAMED Requirements
+  - Scenario step keywords: **GIVEN**, **WHEN**, **THEN**, **AND THEN**
+  - Normative keyword: SHALL (recommended; write the rest in Chinese, e.g. 系统 SHALL ...)
+- Keep CLI commands, paths, and parameters as-is, and display them in code format (e.g., openspec validate <id> --strict).
