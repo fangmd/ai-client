@@ -2,6 +2,7 @@ import { useConfigStore } from '@renderer/stores/configStore'
 import { Button } from '@renderer/components/ui/button'
 import { AiModelList } from '@renderer/components/AiModelList'
 import { SystemPromptSettings } from '@renderer/components/SystemPromptSettings'
+import { McpConfigList } from '@renderer/components/McpConfigList'
 import { Sun, Moon, Monitor, Check } from 'lucide-react'
 import type { ThemeMode } from '@/types'
 
@@ -57,6 +58,9 @@ export const SettingsPage: React.FC = () => {
 
         {/* 大模型设置 */}
         <AiModelList />
+
+        {/* MCP 服务器配置 */}
+        <McpConfigList />
       </div>
     </div>
   )

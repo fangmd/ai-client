@@ -1,39 +1,38 @@
+import { getMcpConfigs } from '@/main/repository/config'
+
 /**
- * MCP 工具固定配置
- * 注意：这是写死的配置，不支持动态配置
+ * MCP 工具配置类型（兼容旧格式）
  */
-export const MCP_TOOL_CONFIG = {
-  // 是否启用 MCP 工具
-  enabled: true,
-  
-  // MCP 工具配置列表（可以配置多个 MCP 服务器）
-  tools: [
-    // 本地 MCP 服务器
-    {
-      type: 'mcp' as const,
-      server_label: 'time-mcp',
-      server_description: 'Local MCP server running on localhost:10010',
-      server_url: 'http://localhost:10010/mcp',  // 本地服务器地址（直接支持）
-      require_approval: 'never' as const
-    },
-    // 示例：远程 MCP 服务器
-    // {
-    //   type: 'mcp' as const,
-    //   server_label: 'remote_mcp',
-    //   server_description: 'Remote MCP server description',
-    //   server_url: 'https://mcp-server.example.com/mcp',
-    //   require_approval: 'never' as const
-    // }
-  ]
-} as const
+export interface McpToolConfig {
+  type: 'mcp'
+  server_label: string
+  server_description?: string
+  server_url: string
+  require_approval: 'always' | 'never'
+}
 
 /**
  * 获取启用的 MCP 工具配置
+ * 从数据库读取配置，仅返回启用状态的配置
  */
-export function getMcpToolConfigs() {
-  if (!MCP_TOOL_CONFIG.enabled) {
+export async function getMcpToolConfigs(): Promise<McpToolConfig[]> {
+  try {
+    const configs = await getMcpConfigs()
+    
+    // 过滤出启用状态的配置，并转换为工具配置格式
+    return configs
+      .filter(config => config.enabled !== false)
+      .map(config => ({
+        type: 'mcp' as const,
+        server_label: config.server_label,
+        server_description: config.server_description,
+        server_url: config.server_url,
+        require_approval: config.require_approval || 'never'
+      }))
+  } catch (error) {
+    // 如果读取失败，返回空数组
+    console.error('Failed to load MCP configs:', error)
     return []
   }
-  return MCP_TOOL_CONFIG.tools
 }
 

@@ -65,5 +65,16 @@ export const IPC_CHANNELS = {
     upload: 'file:upload',
     select: 'file:select',
     read: 'file:read'
+  },
+  // MCP Config 模块
+  mcpConfig: {
+    // 获取所有 MCP 配置
+    list: 'mcp-config:list',
+    // 创建 MCP 配置
+    create: 'mcp-config:create',
+    // 更新 MCP 配置
+    update: 'mcp-config:update',
+    // 删除 MCP 配置
+    delete: 'mcp-config:delete'
   }
 } as const

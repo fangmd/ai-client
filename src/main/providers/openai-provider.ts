@@ -19,15 +19,23 @@ import { getMcpToolConfigs } from './tools/mcp-config'
 let mcpClient: McpClient | null = null
 
 /**
- * 初始化 MCP 客户端（在应用启动时调用）
+ * 初始化 MCP 客户端（在应用启动时调用，或配置变更时重新初始化）
  */
 export async function initializeMcpClient(): Promise<void> {
-  if (getMcpToolConfigs().length === 0) {
-    logInfo('No MCP servers configured, skipping MCP client initialization')
-    return
-  }
-  
   try {
+    // 如果已有客户端，先断开连接
+    if (mcpClient) {
+      logInfo('Disconnecting existing MCP client...')
+      await mcpClient.disconnect()
+      mcpClient = null
+    }
+    
+    const configs = await getMcpToolConfigs()
+    if (configs.length === 0) {
+      logInfo('No MCP servers configured, skipping MCP client initialization')
+      return
+    }
+    
     logInfo('Initializing MCP client...')
     mcpClient = new McpClient()
     await mcpClient.initialize()

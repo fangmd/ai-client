@@ -14,7 +14,10 @@ export class McpClient {
    * 初始化所有 MCP 服务器连接
    */
   async initialize(): Promise<void> {
-    const configs = getMcpToolConfigs()
+    // 先断开所有现有连接
+    await this.disconnect()
+    
+    const configs = await getMcpToolConfigs()
     
     if (configs.length === 0) {
       logInfo('No MCP servers configured, skipping initialization')

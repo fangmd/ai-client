@@ -34,3 +34,36 @@ export interface DeleteConfigRequest {
   key: string
 }
 
+// ==================== MCP Config 相关 IPC 请求类型 ====================
+
+/**
+ * 创建 MCP 配置请求参数
+ */
+export interface CreateMcpConfigRequest {
+  server_label: string
+  server_description?: string
+  server_url: string
+  require_approval?: 'always' | 'never'
+  enabled?: boolean
+}
+
+/**
+ * 更新 MCP 配置请求参数
+ */
+export interface UpdateMcpConfigRequest {
+  server_label: string
+  data: {
+    server_description?: string
+    server_url?: string
+    require_approval?: 'always' | 'never'
+    enabled?: boolean
+  }
+}
+
+/**
+ * 删除 MCP 配置请求参数
+ */
+export interface DeleteMcpConfigRequest {
+  server_label: string
+}
+

@@ -4,6 +4,7 @@ import { ChatSessionHandler } from './chat-session-handler'
 import { MessageHandler } from './message-handler'
 import { ConfigHandler } from './config-handler'
 import { FileHandler } from './file-handler'
+import { McpConfigHandler } from './mcp-config-handler'
 
 /**
  * 统一注册所有 IPC Handlers
@@ -15,6 +16,7 @@ export function registerHandlers(): void {
   MessageHandler.register()
   ConfigHandler.register()
   FileHandler.register()
+  McpConfigHandler.register()
 }
 
 /**
@@ -27,4 +29,5 @@ export function unregisterHandlers(): void {
   MessageHandler.unregister()
   ConfigHandler.unregister()
   FileHandler.unregister()
+  McpConfigHandler.unregister()
 }
