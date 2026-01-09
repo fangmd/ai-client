@@ -10,3 +10,6 @@ export * from './config-db-type'
 
 // IPC 通用类型
 export * from './ipc-type'
+
+// 技能类型
+export * from './skill-type'

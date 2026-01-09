@@ -66,6 +66,18 @@ export interface McpToolCallInfo {
 }
 
 /**
+ * Skill 工具调用信息
+ */
+export interface SkillToolCallInfo {
+  itemId: string              // 工具调用的唯一标识
+  type: 'skill'               // 工具类型
+  status: ToolCallStatus      // 当前状态
+  skillName?: string          // 技能名称（完成时才有）
+  outputIndex?: number        // 在输出中的索引位置
+  timestamp?: number          // 时间戳
+}
+
+/**
  * 工具调用信息
  */
 export type ToolCallInfo = 
@@ -80,6 +92,7 @@ export type ToolCallInfo =
   | TerminalToolCallInfo
   | ReadToolCallInfo
   | McpToolCallInfo
+  | SkillToolCallInfo
 
 /**
  * 附件类型

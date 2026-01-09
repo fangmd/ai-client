@@ -14,6 +14,7 @@ import { readToolDefinition } from './tools/read-tool'
 import { readFile } from '../utils/file-reader'
 import { McpClient } from './mcp/client'
 import { getMcpToolConfigs } from './tools/mcp-config'
+import { getSkillToolDefinition, executeSkillTool } from './tools/skill-tool'
 
 // MCP 客户端单例
 let mcpClient: McpClient | null = null
@@ -277,6 +278,10 @@ export class OpenAIProvider implements AIProvider {
         } else if (tool === 'read') {
           // Function Calling 工具 - 文件读取
           toolsList.push(readToolDefinition)
+        } else if (tool === 'skill') {
+          // Function Calling 工具 - 技能加载
+          const skillToolDef = await getSkillToolDefinition()
+          toolsList.push(skillToolDef)
         }
       }
       
@@ -285,6 +290,13 @@ export class OpenAIProvider implements AIProvider {
         const mcpTools = mcpClient.getToolsAsFunctionCalling()
         toolsList.push(...mcpTools)
         logDebug('MCP tools added to request', { count: mcpTools.length })
+      }
+      
+      // 新增：默认添加 skill 工具（如果不在 tools 列表中）
+      if (!tools.includes('skill')) {
+        const skillToolDef = await getSkillToolDefinition()
+        toolsList.push(skillToolDef)
+        logDebug('Skill tool added by default')
       }
 
       // 创建流式请求
@@ -390,6 +402,15 @@ export class OpenAIProvider implements AIProvider {
                 toolInfo = {
                   itemId: event.item.id,
                   type: 'read',
+                  status: 'in_progress',
+                  outputIndex: event.output_index,
+                  timestamp: Date.now()
+                }
+              } else if (functionName === 'skill') {
+                // Skill 工具
+                toolInfo = {
+                  itemId: event.item.id,
+                  type: 'skill',
                   status: 'in_progress',
                   outputIndex: event.output_index,
                   timestamp: Date.now()
@@ -525,7 +546,7 @@ export class OpenAIProvider implements AIProvider {
                 toolCallsMap
               })
 
-              if (toolInfo && (functionName === 'execute_terminal_command' || functionName === 'read' || functionName.startsWith('mcp_'))) {
+              if (toolInfo && (functionName === 'execute_terminal_command' || functionName === 'read' || functionName === 'skill' || functionName.startsWith('mcp_'))) {
                 // 更新保存的 function_call 信息，包含完整的 arguments
                 const savedFunctionCall = functionCallMap.get(event.item.id)
                 if (savedFunctionCall) {
@@ -974,6 +995,111 @@ export class OpenAIProvider implements AIProvider {
         const errorMessage = error instanceof Error ? error.message : 'Function call failed'
         // 传递 toolInfo，让 handler 知道是哪个工具出错了
         callbacks.onError(new Error(`Terminal command execution failed: ${errorMessage}`), toolInfo)
+      }
+    } else if (functionCall.name === 'skill') {
+      // Skill 工具调用处理
+      logDebug('[handleFunctionCall] Handling skill function call', {
+        functionName: functionCall.name,
+        arguments: functionCall.arguments
+      })
+
+      try {
+        // 解析函数参数
+        const args = JSON.parse(functionCall.arguments)
+        const { name } = args
+
+        logInfo('[handleFunctionCall] Skill load started', {
+          skillName: name,
+          messagesCount: messages.length
+        })
+
+        // 更新 toolInfo 的技能名称信息
+        if (toolInfo.type === 'skill') {
+          toolInfo.skillName = name
+        }
+
+        logDebug('[handleFunctionCall] Tool call info updated', {
+          itemId: toolInfo.itemId,
+          skillName: toolInfo.type === 'skill' ? toolInfo.skillName : undefined
+        })
+
+        // 执行技能加载
+        logDebug('[handleFunctionCall] Loading skill', {
+          skillName: name
+        })
+        const result = await executeSkillTool({ name })
+
+        logInfo('[handleFunctionCall] Skill load completed', {
+          skillName: name,
+          resultLength: result.length
+        })
+
+        // 通知工具调用完成
+        const completedToolInfo: ToolCallInfo = {
+          ...toolInfo,
+          status: 'completed',
+          ...(toolInfo.type === 'skill' ? {
+            skillName: name
+          } : {})
+        }
+
+        callbacks.onToolCallComplete?.(completedToolInfo, result)
+
+        logDebug('[handleFunctionCall] Tool call completed notification sent', {
+          itemId: completedToolInfo.itemId,
+          status: completedToolInfo.status
+        })
+
+        // 构建 function_call_output 消息（Responses API 格式）
+        // 注意：Responses API 使用 function_call_output 类型，而不是 tool 角色
+        const functionCallOutput = {
+          type: 'function_call_output' as const,
+          call_id: functionCall.callId,
+          output: result
+        }
+
+        // 重要：在递归调用时，需要将对应的 function_call 也包含在 input 中
+        // 这样 API 才能找到对应的 tool call
+        if (functionCall.functionCallItem) {
+          messages.push({
+            role: 'user', // 临时使用，实际会在转换时处理
+            content: JSON.stringify(functionCall.functionCallItem),
+            // 添加标记，表示这是一个 function_call 消息
+            _functionCall: functionCall.functionCallItem
+          } as any)
+        }
+
+        // 将工具结果添加到消息列表（作为 ResponseInputItem）
+        // 注意：这里需要将 function_call_output 作为 input 的一部分传递
+        messages.push({
+          role: 'user', // 临时使用 user 角色，实际会在转换时处理
+          content: JSON.stringify(functionCallOutput),
+          // 添加标记，表示这是一个 function_call_output 消息
+          _functionCallOutput: functionCallOutput
+        } as any)
+
+        logDebug('[handleFunctionCall] Function call output added to messages list', {
+          messagesCount: messages.length,
+          callId: functionCall.callId,
+          outputLength: result.length
+        })
+
+        // 递归调用，让 AI 基于结果继续回复
+        logInfo('[handleFunctionCall] Recursively calling streamChat with skill result', {
+          updatedMessagesCount: messages.length,
+          model: config.model
+        })
+        await this.streamChat(messages, config, callbacks, abortSignal, options)
+      } catch (error) {
+        logError('[handleFunctionCall] Skill load failed', {
+          functionName: functionCall.name,
+          arguments: functionCall.arguments,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          errorName: error instanceof Error ? error.name : 'Unknown',
+          stack: error instanceof Error ? error.stack : undefined
+        })
+        const errorMessage = error instanceof Error ? error.message : 'Skill load failed'
+        callbacks.onError(new Error(`Skill load failed: ${errorMessage}`), toolInfo)
       }
     } else if (functionCall.name.startsWith('mcp_')) {
       // MCP 工具调用处理
