@@ -170,16 +170,24 @@ export class AIHandler {
             // 工具调用开始 - 创建工具消息
             onToolCallStart: async (toolInfo: ToolCallInfo) => {
               try {
+                // 对于 skill 类型，如果有 skillName，设置 toolQuery
+                let toolQuery: string | undefined
+                if (toolInfo.type === 'skill' && 'skillName' in toolInfo && toolInfo.skillName) {
+                  toolQuery = toolInfo.skillName
+                }
+
+                const toolType = toolInfo.type === 'mcp' ? undefined : (toolInfo.type as any)
                 const toolMessage = await createMessage({
                   sessionId,
                   role: 'tool',
                   content: getToolCallStartMessage(toolInfo),
                   status: 'pending',
                   contentType: 'tool_call',
-                  toolType: toolInfo.type,
+                  toolType,
                   toolStatus: toolInfo.status,
                   toolItemId: toolInfo.itemId,
-                  toolOutputIndex: toolInfo.outputIndex
+                  toolOutputIndex: toolInfo.outputIndex,
+                  toolQuery
                 })
 
                 toolCallMessageIds.set(toolInfo.itemId, toolMessage.id)
@@ -235,13 +243,19 @@ export class AIHandler {
               const messageId = toolCallMessageIds.get(toolInfo.itemId)
               if (messageId) {
                 try {
-                  // 对于终端工具，使用 command 字段；对于 read 工具，使用 filePath 字段；对于其他工具，使用 query 字段
-                  const toolQuery = 
-                    toolInfo.type === 'terminal' 
-                      ? toolInfo.command 
-                      : toolInfo.type === 'read'
-                      ? toolInfo.filePath
-                      : toolInfo.query
+                  // 根据工具类型获取 toolQuery 值
+                  let toolQuery: string | undefined
+                  if (toolInfo.type === 'terminal') {
+                    toolQuery = toolInfo.command
+                  } else if (toolInfo.type === 'read') {
+                    toolQuery = toolInfo.filePath
+                  } else if (toolInfo.type === 'skill' && 'skillName' in toolInfo) {
+                    toolQuery = toolInfo.skillName
+                  } else if (toolInfo.type === 'mcp' && 'toolName' in toolInfo) {
+                    toolQuery = toolInfo.toolName
+                  } else if ('query' in toolInfo) {
+                    toolQuery = toolInfo.query
+                  }
 
                   // 对于终端工具，如果有执行结果，使用执行结果作为内容；否则使用完成消息
                   const content =
@@ -448,6 +462,8 @@ function getToolCallStartMessage(toolInfo: ToolCallInfo): string {
       return '📁 正在搜索文件...'
     case 'terminal':
       return '💻 正在执行终端命令...'
+    case 'skill':
+      return '📚 正在加载技能...'
     default:
       return '⚙️ 正在执行工具调用...'
   }
@@ -475,6 +491,10 @@ function getToolCallCompleteMessage(toolInfo: ToolCallInfo): string {
       const command = toolInfo.command ? `\n命令：${toolInfo.command}` : ''
       return `✅ 终端命令执行完成${command}`
     }
+    case 'skill': {
+      const skillName = 'skillName' in toolInfo && toolInfo.skillName ? `\n技能：${toolInfo.skillName}` : ''
+      return `✅ 技能加载完成${skillName}`
+    }
     default:
       return '✅ 工具调用完成'
   }
@@ -493,6 +513,10 @@ function getToolCallErrorMessage(toolInfo: ToolCallInfo, errorMessage: string): 
     case 'terminal': {
       const command = toolInfo.command ? `\n命令：${toolInfo.command}` : ''
       return `❌ 终端命令执行失败${command}${errorDetail}`
+    }
+    case 'skill': {
+      const skillName = 'skillName' in toolInfo && toolInfo.skillName ? `\n技能：${toolInfo.skillName}` : ''
+      return `❌ 技能加载失败${skillName}${errorDetail}`
     }
     default:
       return `❌ 工具调用失败${errorDetail}`

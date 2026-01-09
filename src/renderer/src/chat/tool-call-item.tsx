@@ -1,4 +1,4 @@
-import { Globe, FolderSearch, Loader2, CheckCircle2, XCircle, Wrench } from 'lucide-react'
+import { Globe, FolderSearch, Loader2, CheckCircle2, XCircle, Wrench, BookOpen } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@renderer/components/ui/tooltip'
 import type { DbMessageWithAttachments } from '@/types'
 import { cn } from '@renderer/lib/utils'
@@ -12,7 +12,7 @@ export function ToolCallItem({ message }: ToolCallItemProps) {
   // 使用分散的工具调用字段
   if (message.contentType !== 'tool_call' || !message.toolType) return null
 
-  const toolType = message.toolType as 'web_search' | 'file_search' | 'terminal'
+  const toolType = message.toolType as 'web_search' | 'file_search' | 'terminal' | 'skill'
   const toolStatus = message.toolStatus as 'in_progress' | 'searching' | 'completed' | 'failed' | null
   const toolQuery = message.toolQuery || undefined
 
@@ -29,6 +29,8 @@ export function ToolCallItem({ message }: ToolCallItemProps) {
         return <Globe className={iconClass} />
       case 'file_search':
         return <FolderSearch className={iconClass} />
+      case 'skill':
+        return <BookOpen className={iconClass} />
       default:
         return <Wrench className={iconClass} />
     }
@@ -56,6 +58,8 @@ export function ToolCallItem({ message }: ToolCallItemProps) {
         return '网络搜索'
       case 'file_search':
         return '文件搜索'
+      case 'skill':
+        return '技能加载'
       default:
         return '工具调用'
     }
@@ -77,6 +81,17 @@ export function ToolCallItem({ message }: ToolCallItemProps) {
     }
   }
 
+  // 获取 tooltip 中的标签文本
+  const getTooltipLabel = () => {
+    if (toolType === 'skill') {
+      return '技能：'
+    }
+    if (toolType === 'file_search' || toolType === 'web_search') {
+      return '查询：'
+    }
+    return ''
+  }
+
   // 构建 Tooltip 内容
   const tooltipContent = (
     <div className="space-y-1.5 max-w-xs">
@@ -87,7 +102,7 @@ export function ToolCallItem({ message }: ToolCallItemProps) {
       </div>
       {toolQuery && (
         <div className="text-xs text-background/80 pt-1 border-t border-background/20 wrap-break-word">
-          <span className="font-medium">查询：</span>
+          <span className="font-medium">{getTooltipLabel()}</span>
           <span className="ml-1 wrap-break-word break-all whitespace-pre-wrap">{toolQuery}</span>
         </div>
       )}

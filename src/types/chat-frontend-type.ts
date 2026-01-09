@@ -18,7 +18,7 @@ export type MessageContentType = 'text' | 'tool_call'
 /**
  * 工具类型
  */
-export type ToolType = 'web_search' | 'file_search' | 'terminal' | 'read'
+export type ToolType = 'web_search' | 'file_search' | 'terminal' | 'read' | 'skill'
 
 /**
  * 工具调用状态

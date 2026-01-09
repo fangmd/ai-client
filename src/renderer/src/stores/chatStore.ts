@@ -164,7 +164,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
         duration: `${ipcDuration.toFixed(2)}ms`,
         responseCode: response.code,
         hasData: !!response.data,
-        messagesCount: response.data?.messages?.length || 0
+        messagesCount: response.data?.messages?.length || 0,
+        messages: response.data?.messages || []
       })
 
       const updateStateStartTime = performance.now()
