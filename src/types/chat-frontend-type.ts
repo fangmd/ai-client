@@ -13,7 +13,7 @@ export type MessageStatus = 'sending' | 'done' | 'error'
 /**
  * 消息内容类型
  */
-export type MessageContentType = 'text' | 'tool_call'
+export type MessageContentType = 'text' | 'tool_call' | 'a2ui'
 
 /**
  * 工具类型

@@ -46,31 +46,51 @@ async function readSkillFile(filePath: string): Promise<string | null> {
 
 /**
  * 从 Markdown 内容中提取描述（可选）
- * 提取第一行非空内容或第一个标题作为描述
+ * 从 "概述" 章节中提取内容作为描述
  */
 function extractDescription(content: string): string | undefined {
-  const lines = content
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0)
+  const lines = content.split('\n')
+  
+  // 查找 "## 概述" 标题
+  let overviewStartIndex = -1
+  for (let i = 0; i < lines.length; i++) {
+    const trimmedLine = lines[i].trim()
+    if (trimmedLine === '## 概述') {
+      overviewStartIndex = i
+      break
+    }
+  }
 
-  if (lines.length === 0) {
+  // 如果没有找到 "概述" 章节，返回 undefined
+  if (overviewStartIndex === -1) {
     return undefined
   }
 
-  // 查找第一个标题（# 开头）
-  for (const line of lines) {
-    if (line.startsWith('# ')) {
-      return line.substring(2).trim()
+  // 从概述章节开始，收集内容直到下一个标题（## 开头）或文件结束
+  const descriptionLines: string[] = []
+  for (let i = overviewStartIndex + 1; i < lines.length; i++) {
+    const trimmedLine = lines[i].trim()
+    
+    // 如果遇到下一个二级标题，停止收集
+    if (trimmedLine.startsWith('## ') && trimmedLine !== '## 概述') {
+      break
     }
-    if (line.startsWith('## ')) {
-      return line.substring(3).trim()
+    
+    // 跳过空行（但保留已收集内容中的空行）
+    if (trimmedLine.length === 0 && descriptionLines.length === 0) {
+      continue
     }
+    
+    descriptionLines.push(lines[i])
   }
 
-  // 如果没有标题，返回第一行（最多100字符）
-  const firstLine = lines[0]
-  return firstLine.length > 100 ? firstLine.substring(0, 100) + '...' : firstLine
+  // 清理并合并内容
+  const description = descriptionLines
+    .map((line) => line.trimEnd())
+    .join('\n')
+    .trim()
+
+  return description.length > 0 ? description : undefined
 }
 
 /**

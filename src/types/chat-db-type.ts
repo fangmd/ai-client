@@ -89,6 +89,7 @@ export type UpdateMessageData = {
   totalTokens?: number
   
   // 工具调用相关字段
+  contentType?: MessageContentType
   toolStatus?: ToolCallStatus
   toolQuery?: string
 }

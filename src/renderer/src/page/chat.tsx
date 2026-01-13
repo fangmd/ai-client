@@ -8,7 +8,7 @@ import type { AIConfig, Attachment, AiProvider } from '@/types'
 import { useChatStore } from '@renderer/stores/chatStore'
 import { useAiProviderStore } from '@renderer/stores/ai-provider-store'
 import { logDebug } from '@renderer/utils'
-import { Example_One } from '@renderer/a2ui/example'
+import { Example_One, Example_Two } from '@renderer/a2ui/example'
 
 // 默认配置
 const defaultConfig: AIConfig = {
@@ -307,14 +307,15 @@ export const Chat: React.FC = () => {
           : ('done' as const)
   }))
 
-  displayMessages.push({
-    id: BigInt(1).valueOf() as bigint,
-    role: 'user',
-    content: JSON.stringify(Example_One),
-    contentType: 'a2ui',
-    createdAt: new Date().toISOString(),
-    status: 'done'
-  } as any)
+  // test a2ui renderer
+  // displayMessages.push({
+  //   id: BigInt(1).valueOf() as bigint,
+  //   role: 'user',
+  //   content: JSON.stringify(Example_One),
+  //   contentType: 'a2ui',
+  //   createdAt: new Date().toISOString(),
+  //   status: 'done'
+  // } as any)
 
   return (
     <div className="min-h-screen bg-background w-full">

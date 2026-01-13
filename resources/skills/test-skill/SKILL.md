@@ -1,5 +1,9 @@
 # Git 提交信息规范
 
+## 概述
+
+Git 提交信息规范
+
 帮助生成符合规范的 Git 提交信息，确保提交历史清晰、可读。
 
 ## 提交信息格式
@@ -31,6 +35,7 @@ Git 提交信息应该遵循以下格式：
 ### Scope（可选）
 
 影响范围，例如：
+
 - `ui`: 用户界面
 - `api`: API 相关
 - `db`: 数据库
@@ -40,6 +45,7 @@ Git 提交信息应该遵循以下格式：
 ### Subject（必需）
 
 简短描述，不超过 50 个字符：
+
 - 使用祈使句，现在时态（如 "change" 而不是 "changed" 或 "changes"）
 - 首字母小写
 - 结尾不加句号
@@ -47,6 +53,7 @@ Git 提交信息应该遵循以下格式：
 ### Body（可选）
 
 详细描述：
+
 - 说明代码变更的动机
 - 与之前行为的对比
 - 每行不超过 72 个字符
@@ -108,6 +115,7 @@ to improve code organization and testability.
 ## 常见错误
 
 ❌ **错误示例**：
+
 ```
 fix bug
 update code
@@ -115,6 +123,7 @@ changed something
 ```
 
 ✅ **正确示例**：
+
 ```
 fix(api): handle null user gracefully
 refactor(utils): extract common validation logic

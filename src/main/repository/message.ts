@@ -67,6 +67,7 @@ export async function updateMessage(id: bigint, data: UpdateMessageData): Promis
       status: data.status,
       totalTokens: data.totalTokens,
       // 工具调用相关字段
+      contentType: data.contentType,
       toolStatus: data.toolStatus,
       toolQuery: data.toolQuery
     }

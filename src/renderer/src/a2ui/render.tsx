@@ -1,5 +1,5 @@
 import { A2UIProvider, ThemeProvider, Surface, MessageProcessor, useA2UIContext } from '@a2ui/react'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Types } from '@a2ui/lit/0.8'
 import { logDebug, logInfo } from '@renderer/utils'
 
@@ -27,6 +27,7 @@ export function SurfaceRenderer() {
 
 export function A2UI({ messages }: { messages: Types.ServerToClientMessage[] }) {
   const processor = useMemo(() => new MessageProcessor(), [])
+  const [cnt, setCnt] = useState(1)
 
   useEffect(() => {
     const unsubscribe = processor.subscribe(async (event) => {
@@ -40,6 +41,11 @@ export function A2UI({ messages }: { messages: Types.ServerToClientMessage[] }) 
     logInfo('[A2UI] processing messages', messages)
     processor.clearSurfaces()
     processor.processMessages(messages)
+    setTimeout(() => {
+      setCnt((pre) => {
+        return pre + 1
+      })
+    }, 100)
   }, [messages])
 
   return (

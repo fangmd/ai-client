@@ -4,8 +4,9 @@ import { responseSuccess, responseError } from '@/common/response'
 import { AIProviderFactory } from '@/main/providers'
 import { logInfo, logError, logDebug } from '@/main/utils'
 import type { ToolCallInfo, StreamChatRequest, CancelChatRequest, AIMessageInput } from '@/types'
-import { createMessage, updateMessage } from '@/main/repository/message'
+import { createMessage, updateMessage, getMessageById } from '@/main/repository/message'
 import { getConfig } from '@/main/repository/config'
+import { isA2UIMessage, extractA2UIJSON } from '@/main/utils/a2ui-detector'
 
 /**
  * 存储活跃的请求，用于取消功能
@@ -151,7 +152,7 @@ export class AIHandler {
               //   'chunkLength:',
               //   chunk.length
               // )
-              
+
               // 将 chunk 添加到缓冲区
               chunkBuffer.push(chunk)
 
@@ -296,14 +297,57 @@ export class AIHandler {
                 chunkFlushTimer = null
               }
 
-              // 如果有 AI 消息，更新其状态
+              let finalContent = completeText
+
+              // 如果有 AI 消息，检测 A2UI 格式并更新状态
               if (assistantMessageId) {
                 try {
+                  // 确定用于检测的消息内容
+                  let messageContent: string | undefined = completeText
+
+                  // 如果没有 completeText，从数据库读取当前消息内容
+                  if (!messageContent) {
+                    const message = await getMessageById(assistantMessageId)
+                    if (message) {
+                      messageContent = message.content
+                    }
+                  }
+
+                  // 检测是否为 A2UI 消息
+                  let contentType: 'a2ui' | undefined
+                  finalContent = messageContent
+
+                  if (messageContent && isA2UIMessage(messageContent)) {
+                    contentType = 'a2ui'
+
+                    // 提取纯 JSON 字符串（去掉分隔符）
+                    const extractedJSON = extractA2UIJSON(messageContent)
+                    if (extractedJSON) {
+                      finalContent = extractedJSON
+                      logInfo('【IPC Handler】A2UI message detected and JSON extracted', {
+                        messageId: assistantMessageId.toString(),
+                        originalLength: messageContent.length,
+                        extractedLength: extractedJSON.length,
+                        finalContent: finalContent
+                      })
+                    } else {
+                      logInfo('【IPC Handler】A2UI message detected', {
+                        messageId: assistantMessageId.toString()
+                      })
+                    }
+                  }
+
+                  // 更新消息状态、类型和内容（如果是 A2UI，使用提取的 JSON）
                   await updateMessage(assistantMessageId, {
-                    status: 'sent'
+                    status: 'sent',
+                    contentType,
+                    content: finalContent
                   })
+
                   logDebug('【IPC Handler】AI assistant message status updated to sent', {
-                    messageId: assistantMessageId.toString()
+                    messageId: assistantMessageId.toString(),
+                    contentType: contentType || 'text',
+                    contentUpdated: contentType === 'a2ui' && finalContent !== messageContent
                   })
                 } catch (error) {
                   logError('【IPC Handler】Failed to update assistant message status', error)
@@ -315,11 +359,12 @@ export class AIHandler {
                 '【IPC Handler】ai:streamDone, requestId:',
                 requestId,
                 'hasCompleteText:',
-                !!completeText
+                !!finalContent,
+                finalContent
               )
               event.sender.send(IPC_CHANNELS.ai.streamDone, {
                 requestId,
-                completeText: completeText || undefined
+                completeText: finalContent || undefined
               })
               activeRequests.delete(requestId)
             },
@@ -492,7 +537,8 @@ function getToolCallCompleteMessage(toolInfo: ToolCallInfo): string {
       return `✅ 终端命令执行完成${command}`
     }
     case 'skill': {
-      const skillName = 'skillName' in toolInfo && toolInfo.skillName ? `\n技能：${toolInfo.skillName}` : ''
+      const skillName =
+        'skillName' in toolInfo && toolInfo.skillName ? `\n技能：${toolInfo.skillName}` : ''
       return `✅ 技能加载完成${skillName}`
     }
     default:
@@ -515,7 +561,8 @@ function getToolCallErrorMessage(toolInfo: ToolCallInfo, errorMessage: string): 
       return `❌ 终端命令执行失败${command}${errorDetail}`
     }
     case 'skill': {
-      const skillName = 'skillName' in toolInfo && toolInfo.skillName ? `\n技能：${toolInfo.skillName}` : ''
+      const skillName =
+        'skillName' in toolInfo && toolInfo.skillName ? `\n技能：${toolInfo.skillName}` : ''
       return `❌ 技能加载失败${skillName}${errorDetail}`
     }
     default:
