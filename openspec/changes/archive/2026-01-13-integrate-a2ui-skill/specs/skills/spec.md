@@ -36,21 +36,25 @@
 
 #### Scenario: AI 返回有效的 A2UI JSON 消息
 - **WHEN** AI 完成消息生成
-- **AND** 消息内容为有效的 JSON 数组
+- **AND** 消息内容为有效的 JSON 数组，被 `---BEGIN A2UI---` 和 `---END A2UI---` 分隔符包裹
 - **AND** 数组中的每个对象包含且仅包含以下操作之一：`beginRendering`、`surfaceUpdate`、`dataModelUpdate`、`deleteSurface`
-- **THEN** 系统自动将消息的 `contentType` 设置为 `'a2ui'`
+- **THEN** 系统自动提取分隔符之间的纯 JSON 字符串
+- **AND** 系统自动将消息的 `contentType` 设置为 `'a2ui'`
+- **AND** 系统更新消息的 `content` 字段为提取的纯 JSON 字符串（去掉分隔符）
 - **AND** 消息能够被正确渲染为 A2UI 界面
 
 #### Scenario: AI 返回非 A2UI 格式的消息
 - **WHEN** AI 完成消息生成
 - **AND** 消息内容不是有效的 A2UI JSON 格式（例如普通文本、其他 JSON 格式等）
 - **THEN** 系统不修改消息的 `contentType`
+- **AND** 系统不修改消息的 `content` 字段
 - **AND** 消息按照默认方式处理（如 Markdown 渲染）
 
 #### Scenario: AI 返回格式错误的 JSON
 - **WHEN** AI 完成消息生成
 - **AND** 消息内容不是有效的 JSON 格式
 - **THEN** 系统不修改消息的 `contentType`
+- **AND** 系统不修改消息的 `content` 字段
 - **AND** 系统不抛出错误，继续正常处理消息
 - **AND** 系统记录警告日志
 
@@ -60,4 +64,23 @@
 - **AND** 数组中部分对象符合 A2UI 格式，部分不符合
 - **THEN** 系统不将消息识别为 A2UI 格式
 - **AND** 系统不修改消息的 `contentType`
+- **AND** 系统不修改消息的 `content` 字段
+- **AND** 消息按照默认方式处理
+
+#### Scenario: AI 返回空数组
+- **WHEN** AI 完成消息生成
+- **AND** 消息内容为有效的 JSON 数组
+- **AND** 数组为空（长度为 0）
+- **THEN** 系统不将消息识别为 A2UI 格式
+- **AND** 系统不修改消息的 `contentType`
+- **AND** 系统不修改消息的 `content` 字段
+- **AND** 消息按照默认方式处理
+
+#### Scenario: AI 返回包含多个 A2UI 操作类型的对象
+- **WHEN** AI 完成消息生成
+- **AND** 消息内容为有效的 JSON 数组
+- **AND** 数组中某个对象包含多个 A2UI 操作类型（例如同时包含 `beginRendering` 和 `surfaceUpdate`）
+- **THEN** 系统不将消息识别为 A2UI 格式
+- **AND** 系统不修改消息的 `contentType`
+- **AND** 系统不修改消息的 `content` 字段
 - **AND** 消息按照默认方式处理
