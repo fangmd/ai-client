@@ -4,10 +4,14 @@
     <meta charset="UTF-8" />
     <title>AI Chat Client</title>
     <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
-    <meta
+    <!-- 
+      Allow 'unsafe-eval' for Vite HMR and source maps
+      Production mode: Strict CSP without 'unsafe-eval' for security
+    -->
+    <!-- <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
-    />
+      content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+    /> -->
   </head>
 
   <body>

@@ -7,7 +7,9 @@ import { useState, useEffect, memo } from 'react'
 import type { DbMessageWithAttachments, Attachment } from '@/types'
 import { ToolCallItem } from './tool-call-item'
 import { getFileDataUri } from '@renderer/utils/file'
-import { logDebug, logError } from '@renderer/utils'
+import { logDebug, logError, logInfo } from '@renderer/utils'
+import { A2UI } from '../a2ui/render'
+import { Types } from '@a2ui/react'
 interface Props {
   message: DbMessageWithAttachments
 }
@@ -20,6 +22,17 @@ const MessageItemComponent: React.FC<Props> = ({ message }) => {
   // 工具调用消息
   if (message.contentType === 'tool_call') {
     return <ToolCallItem message={message} />
+  }
+
+  if (message.contentType === 'a2ui') {
+    let messages: Types.ServerToClientMessage[] = []
+    try {
+      messages = JSON.parse(message.content)
+      logInfo('[A2UI] messages', messages)
+    } catch (e) {
+      logError('[A2UI] error', e)
+    }
+    return <A2UI messages={messages} />
   }
 
   if (message.role === 'assistant') {
@@ -95,12 +108,12 @@ const MessageItemComponent: React.FC<Props> = ({ message }) => {
 export const MessageItem = memo(MessageItemComponent, (prevProps, nextProps) => {
   const prev = prevProps.message
   const next = nextProps.message
-  
+
   // 如果 ID 不同，需要重新渲染
   if (prev.id !== next.id) {
     return false
   }
-  
+
   // 比较关键字段
   return (
     prev.content === next.content &&

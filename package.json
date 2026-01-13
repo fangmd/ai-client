@@ -22,6 +22,7 @@
     "db:push": "prisma db push && pnpm prisma generate"
   },
   "dependencies": {
+    "@a2ui/react": "file:./renderers/react",
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
     "@modelcontextprotocol/sdk": "^1.25.1",
