@@ -172,110 +172,15 @@ A2UI 支持以下标准组件类型（参考 `standard_catalog_definition.json`�
 ### 简单示例：显示标题和列表
 
 ```json
-[
-  {
-    "beginRendering": {
-      "surfaceId": "default",
-      "root": "root-column"
-    }
-  },
-  {
-    "surfaceUpdate": {
-      "surfaceId": "default",
-      "components": [
-        {
-          "id": "root-column",
-          "component": {
-            "Column": {
-              "children": {
-                "explicitList": ["title", "item-list"]
-              }
-            }
-          }
-        },
-        {
-          "id": "title",
-          "component": {
-            "Text": {
-              "usageHint": "h1",
-              "text": {
-                "path": "title"
-              }
-            }
-          }
-        },
-        {
-          "id": "item-list",
-          "component": {
-            "List": {
-              "direction": "vertical",
-              "children": {
-                "template": {
-                  "componentId": "item-template",
-                  "dataBinding": "/items"
-                }
-              }
-            }
-          }
-        },
-        {
-          "id": "item-template",
-          "component": {
-            "Card": {
-              "child": "item-text"
-            }
-          }
-        },
-        {
-          "id": "item-text",
-          "component": {
-            "Text": {
-              "text": {
-                "path": "name"
-              }
-            }
-          }
-        }
-      ]
-    }
-  },
-  {
-    "dataModelUpdate": {
-      "surfaceId": "default",
-      "path": "/",
-      "contents": [
-        {
-          "key": "title",
-          "valueString": "My List"
-        },
-        {
-          "key": "items",
-          "valueMap": [
-            {
-              "key": "item1",
-              "valueMap": [
-                {
-                  "key": "name",
-                  "valueString": "Item 1"
-                }
-              ]
-            },
-            {
-              "key": "item2",
-              "valueMap": [
-                {
-                  "key": "name",
-                  "valueString": "Item 2"
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  }
-]
+[{"beginRendering":{"surfaceId":"default","root":"root-column"}},{"surfaceUpdate":{"surfaceId":"default","components":[{"id":"root-column","component":{"Column":{"children":{"explicitList":["title","item-list"]}}}},{"id":"title","component":{"Text":{"usageHint":"h1","text":{"path":"title"}}}},{"id":"item-list","component":{"List":{"direction":"vertical","children":{"template":{"componentId":"item-template","dataBinding":"/items"}}}}},{"id":"item-template","component":{"Card":{"child":"item-text"}}},{"id":"item-text","component":{"Text":{"text":{"path":"name"}}}}]}},{"dataModelUpdate":{"surfaceId":"default","path":"/","contents":[{"key":"title","valueString":"My List"},{"key":"items","valueMap":[{"key":"item1","valueMap":[{"key":"name","valueString":"Item 1"}]},{"key":"item2","valueMap":[{"key":"name","valueString":"Item 2"}]}]}]}}]
 ```
+
+### 示例：用户信息卡片
+
+```json
+[{"id":"root","component":{"Card":{"child":"main-column"}}},{"id":"main-column","component":{"Column":{"children":{"explicitList":["avatar-image","name","title","divider","contact-info","actions"]},"gap":"medium","alignment":"center"}}},{"id":"avatar-image","component":{"Image":{"url":{"path":"/avatar"},"altText":{"path":"/name"},"fit":"cover","usageHint":"avatar"}}},{"id":"name","component":{"Text":{"text":{"path":"/name"},"usageHint":"h2"}}},{"id":"title","component":{"Text":{"text":{"path":"/title"},"usageHint":"body"}}},{"id":"divider","component":{"Divider":{}}},{"id":"contact-info","component":{"Column":{"children":{"explicitList":["phone-row","email-row","location-row"]},"gap":"small"}}},{"id":"phone-row","component":{"Row":{"children":{"explicitList":["phone-icon","phone-text"]},"gap":"small","alignment":"center"}}},{"id":"phone-icon","component":{"Icon":{"name":{"literalString":"phone"}}}},{"id":"phone-text","component":{"Text":{"text":{"path":"/phone"},"usageHint":"body"}}},{"id":"email-row","component":{"Row":{"children":{"explicitList":["email-icon","email-text"]},"gap":"small","alignment":"center"}}},{"id":"email-icon","component":{"Icon":{"name":{"literalString":"mail"}}}},{"id":"email-text","component":{"Text":{"text":{"path":"/email"},"usageHint":"body"}}},{"id":"location-row","component":{"Row":{"children":{"explicitList":["location-icon","location-text"]},"gap":"small","alignment":"center"}}},{"id":"location-icon","component":{"Icon":{"name":{"literalString":"location_on"}}}},{"id":"location-text","component":{"Text":{"text":{"path":"/location"},"usageHint":"body"}}},{"id":"actions","component":{"Row":{"children":{"explicitList":["call-btn","message-btn"]},"gap":"small"}}},{"id":"call-btn-text","component":{"Text":{"text":{"literalString":"Call"}}}},{"id":"call-btn","component":{"Button":{"child":"call-btn-text","action":"call"}}},{"id":"message-btn-text","component":{"Text":{"text":{"literalString":"Message"}}}},{"id":"message-btn","component":{"Button":{"child":"message-btn-text","action":"message"}}}]
+```
+
 
 ## 使用指南
 
@@ -288,15 +193,11 @@ A2UI 支持以下标准组件类型（参考 `standard_catalog_definition.json`�
 
 ### 数据获取策略
 
-1. **从文件读取**：使用 `read` 工具读取 JSON、CSV 等数据文件
-2. **从终端命令获取**：使用 `terminal` 工具执行命令获取数据
-3. **从 MCP 服务器获取**：使用 MCP 工具获取外部数据
-4. **从其他技能获取**：使用 `skill` 工具加载其他技能获取数据
-5. **使用 web_search 工具**：使用 `web_search` 工具搜索网络信息
+1. **使用 web_search 工具**：使用 `web_search` 工具搜索网络信息
    - **重要**：从 web_search 获取的数据中，**必须过滤掉所有网址、URL、参考链接等引用信息**
    - 只提取和保留实际的内容信息（文本、数据等），不要包含来源网址
    - 确保输出到 A2UI 消息中的数据是纯净的内容，不包含任何 URL 或链接引用
-6. **直接使用用户提供的数据**：如果用户已经在对话中提供了数据
+2. **直接使用用户提供的数据**：如果用户已经在对话中提供了数据
 
 ### 消息发送格式
 
