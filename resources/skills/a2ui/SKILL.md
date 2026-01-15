@@ -8,8 +8,8 @@ A2UI (Agent to UI) Skill 用于根据用户需求生成符合 A2UI 规范的动�
 
 1. **获取数据**：根据用户需求，使用 web_search tools 获取所需数据
 2. **数据处理**：将 web_search 返回的数据处理成结构化的 JSON 格式，提取关键信息并组织成便于后续使用的数据结构
-3. **生成 A2UI 消息**：根据处理后的 JSON 数据和 A2UI 规范，生成符合 `server_to_client.json` 格式的消息数组
-4. **发送消息**：将消息数组作为纯 JSON 字符串，使用 `---BEGIN A2UI---` 和 `---END A2UI---` 分隔符包裹后发送给用户，系统会自动识别并渲染为 A2UI 界面
+3. **流式生成 A2UI 消息**：根据处理后的 JSON 数据和 A2UI 规范，按照 JSONL（JSON Lines）格式流式生成符合 `server_to_client.json` 格式的消息。每个消息是独立的 JSON 对象，每行一个
+4. **流式发送消息**：使用 `---BEGIN A2UI---` 和 `---END A2UI---` 分隔符包裹 JSONL 流，逐行输出每个消息对象。系统会自动识别并流式渲染为 A2UI 界面
 
 ## A2UI 消息规范
 
@@ -167,24 +167,29 @@ A2UI 支持以下标准组件类型（参考 `standard_catalog_definition.json`�
    - 使用 `valueMap` 表示对象/映射结构
    - 使用 `valueString`、`valueNumber`、`valueBoolean` 表示基本类型
 
-4. **生成消息数组**：
-   - 通常先发送 `surfaceUpdate` 定义组件结构
-   - 然后发送 `dataModelUpdate` 填充数据
-   - 最后发送 `beginRendering` 触发渲染
-   - 或者先发送 `beginRendering`，然后发送更新消息
+4. **流式生成消息**：
+   - 按照 JSONL 格式，每行输出一个独立的 JSON 消息对象
+   - 通常先流式输出 `surfaceUpdate` 消息定义组件结构（可以分多次发送不同的组件）
+   - 然后流式输出 `dataModelUpdate` 消息填充数据
+   - 最后输出 `beginRendering` 消息触发渲染
+   - 消息可以按任意顺序发送，只要在 `beginRendering` 之前所有必需的组件和数据都已发送
 
 ## 示例
 
-### 简单示例：显示标题和列表
+### 简单示例：显示标题和列表（JSONL 格式）
 
-```json
-[{"beginRendering":{"surfaceId":"default","root":"root-column"}},{"surfaceUpdate":{"surfaceId":"default","components":[{"id":"root-column","component":{"Column":{"children":{"explicitList":["title","item-list"]}}}},{"id":"title","component":{"Text":{"usageHint":"h1","text":{"path":"title"}}}},{"id":"item-list","component":{"List":{"direction":"vertical","children":{"template":{"componentId":"item-template","dataBinding":"/items"}}}}},{"id":"item-template","component":{"Card":{"child":"item-text"}}},{"id":"item-text","component":{"Text":{"text":{"path":"name"}}}}]}},{"dataModelUpdate":{"surfaceId":"default","path":"/","contents":[{"key":"title","valueString":"My List"},{"key":"items","valueMap":[{"key":"item1","valueMap":[{"key":"name","valueString":"Item 1"}]},{"key":"item2","valueMap":[{"key":"name","valueString":"Item 2"}]}]}]}}]
+```jsonl
+{"surfaceUpdate":{"surfaceId":"default","components":[{"id":"root-column","component":{"Column":{"children":{"explicitList":["title","item-list"]}}}},{"id":"title","component":{"Text":{"usageHint":"h1","text":{"path":"title"}}}},{"id":"item-list","component":{"List":{"direction":"vertical","children":{"template":{"componentId":"item-template","dataBinding":"/items"}}}}},{"id":"item-template","component":{"Card":{"child":"item-text"}}},{"id":"item-text","component":{"Text":{"text":{"path":"name"}}}}]}}
+{"dataModelUpdate":{"surfaceId":"default","path":"/","contents":[{"key":"title","valueString":"My List"},{"key":"items","valueMap":[{"key":"item1","valueMap":[{"key":"name","valueString":"Item 1"}]},{"key":"item2","valueMap":[{"key":"name","valueString":"Item 2"}]}]}]}}
+{"beginRendering":{"surfaceId":"default","root":"root-column"}}
 ```
 
-### 示例：用户信息卡片
+### 示例：用户信息卡片（JSONL 格式）
 
-```json
-[{"id":"root","component":{"Card":{"child":"main-column"}}},{"id":"main-column","component":{"Column":{"children":{"explicitList":["avatar-image","name","title","divider","contact-info","actions"]},"gap":"medium","alignment":"center"}}},{"id":"avatar-image","component":{"Image":{"url":{"path":"/avatar"},"altText":{"path":"/name"},"fit":"cover","usageHint":"avatar"}}},{"id":"name","component":{"Text":{"text":{"path":"/name"},"usageHint":"h2"}}},{"id":"title","component":{"Text":{"text":{"path":"/title"},"usageHint":"body"}}},{"id":"divider","component":{"Divider":{}}},{"id":"contact-info","component":{"Column":{"children":{"explicitList":["phone-row","email-row","location-row"]},"gap":"small"}}},{"id":"phone-row","component":{"Row":{"children":{"explicitList":["phone-icon","phone-text"]},"gap":"small","alignment":"center"}}},{"id":"phone-icon","component":{"Icon":{"name":{"literalString":"phone"}}}},{"id":"phone-text","component":{"Text":{"text":{"path":"/phone"},"usageHint":"body"}}},{"id":"email-row","component":{"Row":{"children":{"explicitList":["email-icon","email-text"]},"gap":"small","alignment":"center"}}},{"id":"email-icon","component":{"Icon":{"name":{"literalString":"mail"}}}},{"id":"email-text","component":{"Text":{"text":{"path":"/email"},"usageHint":"body"}}},{"id":"location-row","component":{"Row":{"children":{"explicitList":["location-icon","location-text"]},"gap":"small","alignment":"center"}}},{"id":"location-icon","component":{"Icon":{"name":{"literalString":"location_on"}}}},{"id":"location-text","component":{"Text":{"text":{"path":"/location"},"usageHint":"body"}}},{"id":"actions","component":{"Row":{"children":{"explicitList":["call-btn","message-btn"]},"gap":"small"}}},{"id":"call-btn-text","component":{"Text":{"text":{"literalString":"Call"}}}},{"id":"call-btn","component":{"Button":{"child":"call-btn-text","action":"call"}}},{"id":"message-btn-text","component":{"Text":{"text":{"literalString":"Message"}}}},{"id":"message-btn","component":{"Button":{"child":"message-btn-text","action":"message"}}}]
+```jsonl
+{"surfaceUpdate":{"surfaceId":"profile","components":[{"id":"root","component":{"Card":{"child":"main-column"}}},{"id":"main-column","component":{"Column":{"children":{"explicitList":["avatar-image","name","title","divider","contact-info","actions"]},"alignment":"center"}}},{"id":"avatar-image","component":{"Image":{"url":{"path":"/avatar"},"fit":"cover","usageHint":"avatar"}}},{"id":"name","component":{"Text":{"text":{"path":"/name"},"usageHint":"h2"}}},{"id":"title","component":{"Text":{"text":{"path":"/title"},"usageHint":"body"}}},{"id":"divider","component":{"Divider":{}}},{"id":"contact-info","component":{"Column":{"children":{"explicitList":["phone-row","email-row","location-row"]}}}},{"id":"phone-row","component":{"Row":{"children":{"explicitList":["phone-icon","phone-text"]},"alignment":"center"}}},{"id":"phone-icon","component":{"Icon":{"name":{"literalString":"phone"}}}},{"id":"phone-text","component":{"Text":{"text":{"path":"/phone"},"usageHint":"body"}}},{"id":"email-row","component":{"Row":{"children":{"explicitList":["email-icon","email-text"]},"alignment":"center"}}},{"id":"email-icon","component":{"Icon":{"name":{"literalString":"mail"}}}},{"id":"email-text","component":{"Text":{"text":{"path":"/email"},"usageHint":"body"}}},{"id":"location-row","component":{"Row":{"children":{"explicitList":["location-icon","location-text"]},"alignment":"center"}}},{"id":"location-icon","component":{"Icon":{"name":{"literalString":"locationOn"}}}},{"id":"location-text","component":{"Text":{"text":{"path":"/location"},"usageHint":"body"}}},{"id":"actions","component":{"Row":{"children":{"explicitList":["call-btn","message-btn"]}}}},{"id":"call-btn-text","component":{"Text":{"text":{"literalString":"Call"}}}},{"id":"call-btn","component":{"Button":{"child":"call-btn-text","action":{"name":"call"}}}},{"id":"message-btn-text","component":{"Text":{"text":{"literalString":"Message"}}}},{"id":"message-btn","component":{"Button":{"child":"message-btn-text","action":{"name":"message"}}}}]}}
+{"dataModelUpdate":{"surfaceId":"profile","path":"/","contents":[{"key":"name","valueString":"John Doe"},{"key":"title","valueString":"Software Engineer"},{"key":"phone","valueString":"+1 234-567-8900"},{"key":"email","valueString":"john@example.com"},{"key":"location","valueString":"San Francisco, CA"},{"key":"avatar","valueString":"https://example.com/avatar.jpg"}]}}
+{"beginRendering":{"surfaceId":"profile","root":"root"}}
 ```
 
 
@@ -207,25 +212,33 @@ A2UI 支持以下标准组件类型（参考 `standard_catalog_definition.json`�
 
 ### 消息发送格式
 
-生成消息数组后，需要：
+A2UI 协议使用 **JSONL（JSON Lines）格式**进行流式输出。每个消息是独立的 JSON 对象，每行一个。
 
-1. **生成 JSON 数组**：将消息数组序列化为有效的 JSON 字符串
-2. **添加分隔符**：使用 `---BEGIN A2UI---` 和 `---END A2UI---` 包裹 JSON 字符串
-3. **直接发送**：在回复中直接输出带分隔符的 JSON 数组字符串，不要添加额外的说明文字或 Markdown 代码块
-4. **确保格式正确**：JSON 必须严格符合 `server_to_client.json` 规范，必须是有效的 JSON 数组
+**流式输出步骤**：
+
+1. **使用分隔符开始**：首先输出 `---BEGIN A2UI---`
+2. **流式输出 JSONL 消息**：每行输出一个独立的 JSON 对象，符合 `server_to_client.json` 规范
+   - 每个消息对象必须且仅包含四种操作之一：`beginRendering`、`surfaceUpdate`、`dataModelUpdate`、`deleteSurface`
+   - 每行必须是有效的 JSON 对象，不能是数组
+   - 消息可以按任意顺序发送，但通常先发送组件定义，再发送数据，最后发送 `beginRendering`
+3. **使用分隔符结束**：最后输出 `---END A2UI---`
+4. **直接发送**：在回复中直接输出，不要添加额外的说明文字或 Markdown 代码块
 
 **重要提示**：
-- 消息内容必须是**纯 JSON 数组字符串**，用 `---BEGIN A2UI---` 和 `---END A2UI---` 分隔符包裹
+- 消息格式必须是 **JSONL（每行一个 JSON 对象）**，不是 JSON 数组
+- 使用 `---BEGIN A2UI---` 和 `---END A2UI---` 分隔符包裹整个 JSONL 流
 - 不要使用 Markdown 代码块包裹（如 \`\`\`json ... \`\`\`）
 - 不要添加额外的说明文字
-- **严格遵守格式规范**：每个消息对象必须且仅包含四种操作之一（`beginRendering`、`surfaceUpdate`、`dataModelUpdate`、`deleteSurface`）
+- **严格遵守格式规范**：每个消息对象必须且仅包含四种操作之一
 - 所有字段必须符合 `server_to_client.json` 中定义的类型和约束
-- 系统会自动检测分隔符和 JSON 格式并渲染为 A2UI 界面
+- 系统会自动检测分隔符和 JSONL 格式并流式渲染为 A2UI 界面
 
 **示例输出格式**：
 ```
 ---BEGIN A2UI---
-[{"beginRendering":{"surfaceId":"default","root":"root-column"}},{"surfaceUpdate":{"surfaceId":"default","components":[...]}},{"dataModelUpdate":{"surfaceId":"default","path":"/","contents":[...]}}]
+{"surfaceUpdate":{"surfaceId":"default","components":[...]}}
+{"dataModelUpdate":{"surfaceId":"default","path":"/","contents":[...]}}
+{"beginRendering":{"surfaceId":"default","root":"root-column"}}
 ---END A2UI---
 ```
 
@@ -235,10 +248,12 @@ A2UI 支持以下标准组件类型（参考 `standard_catalog_definition.json`�
 2. **surfaceId 唯一性**：如果要创建新的 surface，必须使用新的、未使用过的 surfaceId
 3. **数据路径**：确保 `dataModelUpdate` 中的数据路径与组件中使用的 `path` 匹配
 4. **组件类型**：只能使用标准目录中定义的组件类型
-5. **消息顺序**：虽然消息顺序通常不重要，但建议先发送组件定义，再发送数据，最后发送 `beginRendering`
-6. **错误处理**：如果数据获取失败，应该向用户说明错误，而不是生成不完整的 UI
-7. **web_search 数据过滤**：使用 `web_search` 工具时，必须从搜索结果中移除所有网址、URL、参考链接等信息，只保留实际内容数据
-8. **格式严格遵守**：输出消息必须严格遵循 `server_to_client.json` 规范，每个消息对象必须且仅包含一种操作类型，所有字段必须符合规范定义
+5. **消息顺序**：虽然消息顺序通常不重要，但建议先流式输出组件定义（`surfaceUpdate`），再输出数据（`dataModelUpdate`），最后输出 `beginRendering` 触发渲染
+6. **流式输出**：消息应该流式输出，不需要等待所有消息生成完成。每生成一个消息就立即输出一行 JSON
+7. **JSONL 格式**：每行必须是一个独立的 JSON 对象，不能是 JSON 数组。每行以换行符分隔
+8. **错误处理**：如果数据获取失败，应该向用户说明错误，而不是生成不完整的 UI
+9. **web_search 数据过滤**：使用 `web_search` 工具时，必须从搜索结果中移除所有网址、URL、参考链接等信息，只保留实际内容数据
+10. **格式严格遵守**：输出消息必须严格遵循 `server_to_client.json` 规范，每个消息对象必须且仅包含一种操作类型，所有字段必须符合规范定义
 
 ## 参考资源
 
