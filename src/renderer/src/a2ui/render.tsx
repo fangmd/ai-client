@@ -32,6 +32,7 @@ export function A2UI({ messages }: { messages: Types.ServerToClientMessage[] }) 
   useEffect(() => {
     const unsubscribe = processor.subscribe(async (event) => {
       logInfo('[A2UI] action received', event)
+      // 
     })
 
     return unsubscribe
