@@ -4,7 +4,7 @@ import { inspect } from 'util'
 
 // 日志格式化配置
 const INSPECT_OPTIONS = {
-  depth: null, // 无限深度展开
+  depth: 4, // 无限深度展开
   maxArrayLength: 50, // 数组最多显示50个元素
   maxStringLength: 100000, // 字符串最大长度1000
   colors: false, // 日志文件不需要颜色

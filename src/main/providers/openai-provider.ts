@@ -630,11 +630,7 @@ export class OpenAIProvider implements AIProvider {
 
           // 10. 响应完成
           case 'response.completed': {
-            const event = chunk as any
-            logInfo('Response completed', {
-              totalOutputItems: event.response?.output,
-              usage: event.response?.usage
-            })
+            // const event = chunk as any
             break
           }
         }

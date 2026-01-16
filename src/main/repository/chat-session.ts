@@ -1,7 +1,6 @@
 import { prisma } from '@/main/common/db/prisma'
 import { generateUUID } from '@/main/utils/snowflake'
 import type { Attachment, DbChatSession, CreateChatSessionData, UpdateChatSessionData, AttachmentType } from '@/types'
-import { logDebug } from '@/main/utils'
 
 /**
  * 创建对话会话
@@ -37,41 +36,21 @@ export async function listChatSessions(options?: {
  * 优化：使用事务和原生 SQL JOIN 一次性获取所有数据，减少数据库往返次数
  */
 export async function getChatSessionById(id: bigint) {
-  const startTime = performance.now()
-  logDebug('[SessionSwitch] getChatSessionById start', {
-    sessionId: String(id),
-    timestamp: new Date().toISOString()
-  })
-
   // 使用事务确保所有查询在同一连接中执行，减少连接开销
   const result = await prisma.$transaction(async (tx) => {
-    const querySessionStart = performance.now()
     // 查询会话
     const session = await tx.chatSession.findUnique({
       where: { id }
-    })
-    const querySessionDuration = performance.now() - querySessionStart
-    logDebug('[SessionSwitch] getChatSessionById query session', {
-      sessionId: String(id),
-      duration: `${querySessionDuration.toFixed(2)}ms`,
-      found: !!session
     })
 
     if (!session) {
       return null
     }
 
-    const queryMessagesStart = performance.now()
     // 查询消息（在同一事务中）
     const messages = await tx.message.findMany({
       where: { sessionId: id },
       orderBy: { createdAt: 'asc' }
-    })
-    const queryMessagesDuration = performance.now() - queryMessagesStart
-    logDebug('[SessionSwitch] getChatSessionById query messages', {
-      sessionId: String(id),
-      duration: `${queryMessagesDuration.toFixed(2)}ms`,
-      messagesCount: messages.length
     })
 
     // 如果没有消息，直接返回
@@ -82,18 +61,11 @@ export async function getChatSessionById(id: bigint) {
       }
     }
 
-    const queryAttachmentsStart = performance.now()
     // 批量查询所有消息的附件（在同一事务中）
     const messageIds = messages.map((m) => m.id)
     const attachments = await tx.attachment.findMany({
       where: { messageId: { in: messageIds } },
       orderBy: { createdAt: 'asc' }
-    })
-    const queryAttachmentsDuration = performance.now() - queryAttachmentsStart
-    logDebug('[SessionSwitch] getChatSessionById query attachments', {
-      sessionId: String(id),
-      duration: `${queryAttachmentsDuration.toFixed(2)}ms`,
-      attachmentsCount: attachments.length
     })
 
     // 构建附件映射（需要类型转换，因为 Prisma 返回的 type 是 string）
@@ -110,7 +82,6 @@ export async function getChatSessionById(id: bigint) {
     }
 
     // 合并消息和附件
-    const mergeStart = performance.now()
     const messagesWithAttachments = messages.map((msg) => {
       const dbAttachments = attachmentsMap.get(msg.id) || []
       const attachments: Attachment[] | undefined =
@@ -120,23 +91,11 @@ export async function getChatSessionById(id: bigint) {
         attachments
       }
     })
-    const mergeDuration = performance.now() - mergeStart
-    logDebug('[SessionSwitch] getChatSessionById merge data', {
-      sessionId: String(id),
-      duration: `${mergeDuration.toFixed(2)}ms`
-    })
 
     return {
       ...session,
       messages: messagesWithAttachments
     }
-  })
-
-  const totalDuration = performance.now() - startTime
-  logDebug('[SessionSwitch] getChatSessionById end', {
-    sessionId: String(id),
-    totalDuration: `${totalDuration.toFixed(2)}ms`,
-    messagesCount: result?.messages?.length || 0
   })
 
   return result

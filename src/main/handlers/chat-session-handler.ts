@@ -17,7 +17,7 @@ import {
   deleteChatSession
 } from '@/main/repository/chat-session'
 import { getAiProviderById } from '@/main/repository/ai-provider'
-import { logDebug, logError, logInfo } from '@/main/utils'
+import { logError, logInfo } from '@/main/utils'
 
 /**
  * ChatSession Handler
@@ -79,23 +79,10 @@ export class ChatSessionHandler {
 
     // 查询单个对话（包含消息）
     ipcMain.handle(IPC_CHANNELS.chatSession.get, async (_event, data: GetChatSessionRequest) => {
-      const handlerStartTime = performance.now()
       logInfo('【IPC Handler】chatSession:get called, params:', data)
-      logDebug('[SessionSwitch] IPC handler chatSession:get start', {
-        sessionId: String(data.id),
-        timestamp: new Date().toISOString()
-      })
 
       try {
-        const queryStartTime = performance.now()
         const session = await getChatSessionById(data.id)
-        const queryDuration = performance.now() - queryStartTime
-        logDebug('[SessionSwitch] IPC handler chatSession:get query completed', {
-          sessionId: String(data.id),
-          queryDuration: `${queryDuration.toFixed(2)}ms`,
-          found: !!session,
-          messagesCount: session?.messages?.length || 0
-        })
 
         if (!session) {
           const response = responseError('Chat session not found')
@@ -103,29 +90,14 @@ export class ChatSessionHandler {
           return response
         }
 
-        const serializeStartTime = performance.now()
         // 直接返回，Electron IPC 会自动处理 Date 序列化
         const response = responseSuccess(session)
-        const serializeDuration = performance.now() - serializeStartTime
-        const totalDuration = performance.now() - handlerStartTime
 
         logInfo('【IPC Handler】chatSession:get success, messagesCount:', session.messages.length)
-        logDebug('[SessionSwitch] IPC handler chatSession:get end', {
-          sessionId: String(data.id),
-          serializeDuration: `${serializeDuration.toFixed(2)}ms`,
-          totalDuration: `${totalDuration.toFixed(2)}ms`,
-          messagesCount: session.messages.length
-        })
         return response
       } catch (error) {
-        const errorDuration = performance.now() - handlerStartTime
         const response = responseError(error)
         logError('【IPC Handler】chatSession:get error, response:', response)
-        logDebug('[SessionSwitch] IPC handler chatSession:get error', {
-          sessionId: String(data.id),
-          error: error instanceof Error ? error.message : String(error),
-          duration: `${errorDuration.toFixed(2)}ms`
-        })
         return response
       }
     })

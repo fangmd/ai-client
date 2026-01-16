@@ -169,28 +169,61 @@ A2UI 支持以下标准组件类型（参考 `standard_catalog_definition.json`�
 
 4. **流式生成消息**：
    - 按照 JSONL 格式，每行输出一个独立的 JSON 消息对象
-   - 通常先流式输出 `surfaceUpdate` 消息定义组件结构（可以分多次发送不同的组件）
-   - 然后流式输出 `dataModelUpdate` 消息填充数据
-   - 最后输出 `beginRendering` 消息触发渲染
+   - **细粒度组件流式输出**：`surfaceUpdate` 消息可以分多次发送，每次只包含一个或几个组件。客户端会实时渲染已收到的组件，实现渐进式 UI 构建。不需要等待所有组件都生成完成再发送。
+   - **组件逐个渲染**：每个组件可以单独作为一个 `surfaceUpdate` 消息发送，客户端会立即更新 UI，显示新收到的组件。这样可以实现组件一个一个渲染的效果，提升用户体验。
+   - 然后流式输出 `dataModelUpdate` 消息填充数据（也可以分多次发送，每次更新部分数据）
+   - 最后输出 `beginRendering` 消息触发初始渲染（客户端在收到 `beginRendering` 之前会缓冲组件和数据，收到后开始渲染）
    - 消息可以按任意顺序发送，只要在 `beginRendering` 之前所有必需的组件和数据都已发送
 
 ## 示例
 
-### 简单示例：显示标题和列表（JSONL 格式）
+### 简单示例：显示标题和列表（流式渲染，组件逐个发送）
+
+以下示例展示了流式渲染的方式，组件逐个发送，实现渐进式 UI 构建：
 
 ```jsonl
-{"surfaceUpdate":{"surfaceId":"default","components":[{"id":"root-column","component":{"Column":{"children":{"explicitList":["title","item-list"]}}}},{"id":"title","component":{"Text":{"usageHint":"h1","text":{"path":"title"}}}},{"id":"item-list","component":{"List":{"direction":"vertical","children":{"template":{"componentId":"item-template","dataBinding":"/items"}}}}},{"id":"item-template","component":{"Card":{"child":"item-text"}}},{"id":"item-text","component":{"Text":{"text":{"path":"name"}}}}]}}
-{"dataModelUpdate":{"surfaceId":"default","path":"/","contents":[{"key":"title","valueString":"My List"},{"key":"items","valueMap":[{"key":"item1","valueMap":[{"key":"name","valueString":"Item 1"}]},{"key":"item2","valueMap":[{"key":"name","valueString":"Item 2"}]}]}]}}
+{"surfaceUpdate":{"surfaceId":"default","components":[{"id":"root-column","component":{"Column":{"children":{"explicitList":["title","item-list"]}}}}]}}
+{"surfaceUpdate":{"surfaceId":"default","components":[{"id":"title","component":{"Text":{"usageHint":"h1","text":{"path":"title"}}}}]}}
+{"dataModelUpdate":{"surfaceId":"default","path":"/","contents":[{"key":"title","valueString":"My List"}]}}
+{"surfaceUpdate":{"surfaceId":"default","components":[{"id":"item-list","component":{"List":{"direction":"vertical","children":{"template":{"componentId":"item-template","dataBinding":"/items"}}}}}]}}
+{"surfaceUpdate":{"surfaceId":"default","components":[{"id":"item-template","component":{"Card":{"child":"item-text"}}},{"id":"item-text","component":{"Text":{"text":{"path":"name"}}}}]}}
+{"dataModelUpdate":{"surfaceId":"default","path":"/","contents":[{"key":"items","valueMap":[{"key":"item1","valueMap":[{"key":"name","valueString":"Item 1"}]},{"key":"item2","valueMap":[{"key":"name","valueString":"Item 2"}]}]}]}}
 {"beginRendering":{"surfaceId":"default","root":"root-column"}}
 ```
 
-### 示例：用户信息卡片（JSONL 格式）
+**流式渲染说明**：
+- 第 1 行：发送根容器组件 `root-column`，定义整体布局结构
+- 第 2 行：发送标题组件 `title`
+- 第 3 行：发送标题数据，客户端可以立即显示标题
+- 第 4 行：发送列表容器组件 `item-list`
+- 第 5 行：发送列表项模板组件 `item-template` 和 `item-text`
+- 第 6 行：发送列表数据，客户端可以渲染列表项
+- 第 7 行：发送 `beginRendering` 触发渲染
+
+这种方式可以让用户看到 UI 逐步构建的过程，提升用户体验。
+
+### 示例：渐进式渲染（组件逐个发送，实现流式渲染）
+
+以下示例展示了如何将组件分多次发送，实现渐进式 UI 构建。客户端会实时渲染已收到的组件，用户可以看到 UI 逐步构建的过程：
 
 ```jsonl
-{"surfaceUpdate":{"surfaceId":"profile","components":[{"id":"root","component":{"Card":{"child":"main-column"}}},{"id":"main-column","component":{"Column":{"children":{"explicitList":["avatar-image","name","title","divider","contact-info","actions"]},"alignment":"center"}}},{"id":"avatar-image","component":{"Image":{"url":{"path":"/avatar"},"fit":"cover","usageHint":"avatar"}}},{"id":"name","component":{"Text":{"text":{"path":"/name"},"usageHint":"h2"}}},{"id":"title","component":{"Text":{"text":{"path":"/title"},"usageHint":"body"}}},{"id":"divider","component":{"Divider":{}}},{"id":"contact-info","component":{"Column":{"children":{"explicitList":["phone-row","email-row","location-row"]}}}},{"id":"phone-row","component":{"Row":{"children":{"explicitList":["phone-icon","phone-text"]},"alignment":"center"}}},{"id":"phone-icon","component":{"Icon":{"name":{"literalString":"phone"}}}},{"id":"phone-text","component":{"Text":{"text":{"path":"/phone"},"usageHint":"body"}}},{"id":"email-row","component":{"Row":{"children":{"explicitList":["email-icon","email-text"]},"alignment":"center"}}},{"id":"email-icon","component":{"Icon":{"name":{"literalString":"mail"}}}},{"id":"email-text","component":{"Text":{"text":{"path":"/email"},"usageHint":"body"}}},{"id":"location-row","component":{"Row":{"children":{"explicitList":["location-icon","location-text"]},"alignment":"center"}}},{"id":"location-icon","component":{"Icon":{"name":{"literalString":"locationOn"}}}},{"id":"location-text","component":{"Text":{"text":{"path":"/location"},"usageHint":"body"}}},{"id":"actions","component":{"Row":{"children":{"explicitList":["call-btn","message-btn"]}}}},{"id":"call-btn-text","component":{"Text":{"text":{"literalString":"Call"}}}},{"id":"call-btn","component":{"Button":{"child":"call-btn-text","action":{"name":"call"}}}},{"id":"message-btn-text","component":{"Text":{"text":{"literalString":"Message"}}}},{"id":"message-btn","component":{"Button":{"child":"message-btn-text","action":{"name":"message"}}}}]}}
-{"dataModelUpdate":{"surfaceId":"profile","path":"/","contents":[{"key":"name","valueString":"John Doe"},{"key":"title","valueString":"Software Engineer"},{"key":"phone","valueString":"+1 234-567-8900"},{"key":"email","valueString":"john@example.com"},{"key":"location","valueString":"San Francisco, CA"},{"key":"avatar","valueString":"https://example.com/avatar.jpg"}]}}
+{"surfaceUpdate":{"surfaceId":"profile","components":[{"id":"root","component":{"Card":{"child":"main-column"}}}]}}
+{"surfaceUpdate":{"surfaceId":"profile","components":[{"id":"main-column","component":{"Column":{"children":{"explicitList":["avatar-image","name","title"]},"alignment":"center"}}}]}}
+{"surfaceUpdate":{"surfaceId":"profile","components":[{"id":"avatar-image","component":{"Image":{"url":{"path":"/avatar"},"fit":"cover","usageHint":"avatar"}}}]}}
+{"dataModelUpdate":{"surfaceId":"profile","path":"/","contents":[{"key":"avatar","valueString":"https://example.com/avatar.jpg"}]}}
+{"surfaceUpdate":{"surfaceId":"profile","components":[{"id":"name","component":{"Text":{"text":{"path":"/name"},"usageHint":"h2"}}}]}}
+{"dataModelUpdate":{"surfaceId":"profile","path":"/","contents":[{"key":"name","valueString":"John Doe"}]}}
+{"surfaceUpdate":{"surfaceId":"profile","components":[{"id":"title","component":{"Text":{"text":{"path":"/title"},"usageHint":"body"}}}]}}
+{"dataModelUpdate":{"surfaceId":"profile","path":"/","contents":[{"key":"title","valueString":"Software Engineer"}]}}
+{"surfaceUpdate":{"surfaceId":"profile","components":[{"id":"phone-row","component":{"Row":{"children":{"explicitList":["phone-icon","phone-text"]},"alignment":"center"}}},{"id":"phone-icon","component":{"Icon":{"name":{"literalString":"phone"}}}},{"id":"phone-text","component":{"Text":{"text":{"path":"/phone"},"usageHint":"body"}}}]}}
+{"dataModelUpdate":{"surfaceId":"profile","path":"/","contents":[{"key":"phone","valueString":"+1 234-567-8900"}]}}
 {"beginRendering":{"surfaceId":"profile","root":"root"}}
 ```
+
+**渐进式渲染的优势**：
+- 用户可以立即看到 UI 开始构建，不需要等待所有组件生成完成
+- 每个组件生成后立即发送，实现真正的流式渲染
+- 提升用户体验，减少等待时间
 
 
 ## 使用指南
@@ -220,7 +253,10 @@ A2UI 协议使用 **JSONL（JSON Lines）格式**进行流式输出。每个消�
 2. **流式输出 JSONL 消息**：每行输出一个独立的 JSON 对象，符合 `server_to_client.json` 规范
    - 每个消息对象必须且仅包含四种操作之一：`beginRendering`、`surfaceUpdate`、`dataModelUpdate`、`deleteSurface`
    - 每行必须是有效的 JSON 对象，不能是数组
+   - **细粒度流式输出**：`surfaceUpdate` 可以分多次发送，每次只包含一个或几个组件。每生成一个组件就立即发送一行，实现组件逐个渲染。
+   - **渐进式数据更新**：`dataModelUpdate` 也可以分多次发送，每次更新部分数据，客户端会实时更新 UI。
    - 消息可以按任意顺序发送，但通常先发送组件定义，再发送数据，最后发送 `beginRendering`
+   - **客户端实时渲染**：客户端会实时处理收到的每个 JSONL 行，更新组件缓冲区和数据模型。在收到 `beginRendering` 之前，客户端会缓冲消息；收到后开始渲染，并继续处理后续的更新消息。
 3. **使用分隔符结束**：最后输出 `---END A2UI---`
 4. **直接发送**：在回复中直接输出，不要添加额外的说明文字或 Markdown 代码块
 
@@ -249,11 +285,17 @@ A2UI 协议使用 **JSONL（JSON Lines）格式**进行流式输出。每个消�
 3. **数据路径**：确保 `dataModelUpdate` 中的数据路径与组件中使用的 `path` 匹配
 4. **组件类型**：只能使用标准目录中定义的组件类型
 5. **消息顺序**：虽然消息顺序通常不重要，但建议先流式输出组件定义（`surfaceUpdate`），再输出数据（`dataModelUpdate`），最后输出 `beginRendering` 触发渲染
-6. **流式输出**：消息应该流式输出，不需要等待所有消息生成完成。每生成一个消息就立即输出一行 JSON
-7. **JSONL 格式**：每行必须是一个独立的 JSON 对象，不能是 JSON 数组。每行以换行符分隔
-8. **错误处理**：如果数据获取失败，应该向用户说明错误，而不是生成不完整的 UI
-9. **web_search 数据过滤**：使用 `web_search` 工具时，必须从搜索结果中移除所有网址、URL、参考链接等信息，只保留实际内容数据
-10. **格式严格遵守**：输出消息必须严格遵循 `server_to_client.json` 规范，每个消息对象必须且仅包含一种操作类型，所有字段必须符合规范定义
+6. **细粒度流式输出**：消息应该流式输出，不需要等待所有消息生成完成。每生成一个消息就立即输出一行 JSON。**`surfaceUpdate` 可以分多次发送，每次只包含一个或几个组件，实现组件逐个渲染的效果。**
+7. **渐进式渲染**：客户端会实时处理收到的每个 JSONL 行，更新组件缓冲区和数据模型。在收到 `beginRendering` 之前，客户端会缓冲消息；收到后开始渲染，并继续处理后续的更新消息，实现渐进式 UI 构建。
+8. **JSONL 格式**：每行必须是一个独立的 JSON 对象，不能是 JSON 数组。每行以换行符分隔
+9. **错误处理**：如果数据获取失败，应该向用户说明错误，而不是生成不完整的 UI
+10. **web_search 数据过滤**：使用 `web_search` 工具时，必须从搜索结果中移除所有网址、URL、参考链接等信息，只保留实际内容数据
+11. **格式严格遵守**：输出消息必须严格遵循 `server_to_client.json` 规范，每个消息对象必须且仅包含一种操作类型，所有字段必须符合规范定义
+12. **组件逐个渲染最佳实践**：
+    - 对于大型 UI，建议将组件分多次发送，每次发送 1-3 个相关组件
+    - 先发送容器组件（如 Column、Row），再发送其子组件
+    - 先发送可见性高的组件（如标题、图片），再发送次要组件
+    - 数据可以跟随对应的组件一起发送，实现数据与组件的同步更新
 
 ## 参考资源
 

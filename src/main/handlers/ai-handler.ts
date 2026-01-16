@@ -6,7 +6,7 @@ import { logInfo, logError, logDebug } from '@/main/utils'
 import type { ToolCallInfo, StreamChatRequest, CancelChatRequest, AIMessageInput } from '@/types'
 import { createMessage, updateMessage, getMessageById } from '@/main/repository/message'
 import { getConfig } from '@/main/repository/config'
-import { isA2UIMessage, extractA2UIJSON } from '@/main/utils/a2ui-detector'
+import { isA2UIMessage, extractA2UIJSON, A2UI_BEGIN_MARKER } from '@/main/utils/a2ui-detector'
 
 /**
  * 存储活跃的请求，用于取消功能
@@ -85,6 +85,11 @@ export class AIHandler {
         const toolCallInfos = new Map<string, ToolCallInfo>()
         // 用于存储 AI 消息的 ID（itemId -> messageId）
         let assistantMessageId: bigint | null = null
+        // 用于跟踪是否已经检测到 A2UI 标记并设置了 contentType
+        let a2uiContentTypeSet = false
+        // 用于累积流式输出的内容，用于检测 A2UI 标记（限制最大长度以避免内存问题）
+        let accumulatedContent = ''
+        const MAX_ACCUMULATED_LENGTH = 1000 // 最多累积 1000 个字符用于检测标记
 
         // IPC 批处理优化：累积 chunk 后批量发送，减少 IPC 通信频率
         // 优化：增大批处理大小和间隔，减少通信频率，提升流畅度
@@ -144,7 +149,7 @@ export class AIHandler {
               }
             },
 
-            onChunk: (chunk: string) => {
+            onChunk: async (chunk: string) => {
               // 注释掉流式输出时的日志记录，避免频繁 I/O 导致卡顿
               // logDebug(
               //   '【IPC Handler】ai:streamChunk, requestId:',
@@ -152,6 +157,40 @@ export class AIHandler {
               //   'chunkLength:',
               //   chunk.length
               // )
+
+              // 累积内容用于检测 A2UI 标记（仅在尚未检测到时累积）
+              if (!a2uiContentTypeSet && assistantMessageId) {
+                accumulatedContent += chunk
+                
+                // 限制累积长度，避免内存问题
+                if (accumulatedContent.length > MAX_ACCUMULATED_LENGTH) {
+                  // 保留最后一部分内容（包含标记的可能性）
+                  accumulatedContent = accumulatedContent.slice(-MAX_ACCUMULATED_LENGTH)
+                }
+
+                // 检查累积内容中是否包含 A2UI 开始标记
+                if (accumulatedContent.includes(A2UI_BEGIN_MARKER)) {
+                  try {
+                    // 立即设置 contentType 为 'a2ui'
+                    await updateMessage(assistantMessageId, {
+                      contentType: 'a2ui'
+                    })
+
+                    a2uiContentTypeSet = true
+                    // 检测到标记后，不再需要累积内容
+                    accumulatedContent = ''
+
+                    // 注意：不再次发送 assistantMessageStart 事件，避免前端重复添加消息
+                    // 前端会通过检测 chunk 中的 A2UI 标记来自动处理 contentType 更新
+                    logInfo('【IPC Handler】A2UI message type detected early and set', {
+                      messageId: assistantMessageId.toString(),
+                      requestId
+                    })
+                  } catch (error) {
+                    logError('【IPC Handler】Failed to set A2UI contentType early', error)
+                  }
+                }
+              }
 
               // 将 chunk 添加到缓冲区
               chunkBuffer.push(chunk)
@@ -299,7 +338,7 @@ export class AIHandler {
 
               let finalContent = completeText
 
-              // 如果有 AI 消息，检测 A2UI 格式并更新状态
+              // 如果有 AI 消息，更新状态和内容
               if (assistantMessageId) {
                 try {
                   // 确定用于检测的消息内容
@@ -313,41 +352,33 @@ export class AIHandler {
                     }
                   }
 
-                  // 检测是否为 A2UI 消息
-                  let contentType: 'a2ui' | undefined
                   finalContent = messageContent
 
-                  if (messageContent && isA2UIMessage(messageContent)) {
-                    contentType = 'a2ui'
-
+                  // 如果已经提前设置了 A2UI contentType，需要提取并转换 JSONL 格式
+                  if (a2uiContentTypeSet && messageContent) {
                     // 提取纯 JSON 字符串（去掉分隔符）
                     const extractedJSON = extractA2UIJSON(messageContent)
                     if (extractedJSON) {
                       finalContent = extractedJSON
-                      logInfo('【IPC Handler】A2UI message detected and JSON extracted', {
+                      logInfo('【IPC Handler】A2UI message JSON extracted', {
                         messageId: assistantMessageId.toString(),
                         originalLength: messageContent.length,
-                        extractedLength: extractedJSON.length,
-                        finalContent: finalContent
-                      })
-                    } else {
-                      logInfo('【IPC Handler】A2UI message detected', {
-                        messageId: assistantMessageId.toString()
+                        extractedLength: extractedJSON.length
                       })
                     }
                   }
 
-                  // 更新消息状态、类型和内容（如果是 A2UI，使用提取的 JSON）
+                  logInfo('【IPC Handler】finalContent', finalContent)
+                  // 更新消息状态和内容（不更新 contentType，因为已经在 onChunk 中设置）
                   await updateMessage(assistantMessageId, {
                     status: 'sent',
-                    contentType,
                     content: finalContent
                   })
 
                   logDebug('【IPC Handler】AI assistant message status updated to sent', {
                     messageId: assistantMessageId.toString(),
-                    contentType: contentType || 'text',
-                    contentUpdated: contentType === 'a2ui' && finalContent !== messageContent
+                    wasDetectedEarly: a2uiContentTypeSet,
+                    contentUpdated: a2uiContentTypeSet && finalContent !== messageContent
                   })
                 } catch (error) {
                   logError('【IPC Handler】Failed to update assistant message status', error)
