@@ -118,13 +118,25 @@ TBD - created by archiving change add-rag-feature. Update Purpose after archive.
 系统 SHALL 在对话中集成 RAG 检索，基于知识库内容增强 AI 回答。
 
 #### Scenario: 选择知识库
-- **WHEN** 用户在聊天界面选择知识库（从下拉框中选择）
-- **THEN** 系统保存该知识库选择到当前会话
-- **AND** 后续对话将使用该知识库进行 RAG 检索
-- **AND** 如果选择"无"，则禁用 RAG 功能
+- **WHEN** 用户在聊天界面打开知识库入口（位于“附近选择器”右侧的“知识库”图标）
+- **AND** 在弹出的列表中选择某个知识库
+- **THEN** 系统将该知识库选择保存到当前会话（`ChatSession.ragLibraryId`，可为空）
+- **AND THEN** 聊天界面在知识库图标处体现“已选择”状态（例如高亮/提示当前库名称）
+- **AND THEN** 后续对话将使用该知识库进行 RAG 检索
+
+#### Scenario: 默认不选择
+- **GIVEN** 用户创建一个新的聊天会话
+- **THEN** 会话的默认知识库选择 SHALL 为“不选择”（`ChatSession.ragLibraryId = null`）
+- **AND THEN** 聊天界面的知识库图标初始状态为“未选择”
+
+#### Scenario: 禁用 RAG 模式
+- **WHEN** 用户将知识库选择设置为“不选择/无”
+- **THEN** 系统将当前会话的 `ChatSession.ragLibraryId` 置为 `null`
+- **AND THEN** 系统在后续对话中不使用 RAG 检索
+- **AND** AI 回答基于通用知识生成
 
 #### Scenario: 启用 RAG 模式
-- **WHEN** 用户在聊天界面选择了知识库（非"无"）
+- **WHEN** 用户在聊天界面选择了知识库（`ChatSession.ragLibraryId` 不为 `null`）
 - **THEN** 系统在后续对话中启用 RAG 检索
 - **AND** AI 回答基于知识库内容生成
 
@@ -145,11 +157,6 @@ TBD - created by archiving change add-rag-feature. Update Purpose after archive.
 - **AND** 每个片段最多截断为 800 字符
 - **AND** 片段按相关性排序并编号
 - **AND** system message 插入在系统提示词之后、用户消息之前
-
-#### Scenario: 禁用 RAG 模式
-- **WHEN** 用户将知识库选择设置为"无"
-- **THEN** 系统在后续对话中不使用 RAG 检索
-- **AND** AI 回答基于通用知识生成
 
 ### Requirement: 引用溯源
 

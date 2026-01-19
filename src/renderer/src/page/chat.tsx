@@ -4,10 +4,10 @@ import { MessageItem } from '@renderer/chat/message-item'
 import '@renderer/assets/chat.css'
 import { ChatInput } from '@renderer/chat/chat-input'
 import { LoadingAnimation } from '@renderer/components/loading'
-import { RagSelector } from '@renderer/components/rag/rag-selector'
 import type { AIConfig, Attachment, AiProvider } from '@/types'
 import { useChatStore } from '@renderer/stores/chatStore'
 import { useAiProviderStore } from '@renderer/stores/ai-provider-store'
+import { useRagStore } from '@renderer/stores/ragStore'
 import { logDebug } from '@renderer/utils'
 import { Example_One, Example_Two } from '@renderer/a2ui/example'
 
@@ -35,8 +35,9 @@ const buildAIConfig = (provider: AiProvider | null): AIConfig => {
 }
 
 export const Chat: React.FC = () => {
-  const { config, currentAiProviderId, setCurrentAiProviderId } = useChatStore()
+  const { config, currentAiProviderId, setCurrentAiProviderId, currentSessionId, loadSession } = useChatStore()
   const { providers, loading: loadingProvider, getDefaultProvider } = useAiProviderStore()
+  const { selectLibrary } = useRagStore()
 
   // 根据 currentAiProviderId 获取对应的 provider，若没有则使用默认 provider
   const currentProvider = useMemo(() => {
@@ -73,7 +74,7 @@ export const Chat: React.FC = () => {
   }, [stopStream])
 
   const updateSession = useChatStore((state) => state.updateSession)
-  const currentSessionId = useChatStore((state) => state.currentSessionId)
+  const sessions = useChatStore((state) => state.sessions)
 
   // 监控消息和加载状态变化，用于性能分析
   const prevLoadingMessagesRef = useRef(loadingMessages)
@@ -97,6 +98,29 @@ export const Chat: React.FC = () => {
     },
     [setCurrentAiProviderId, currentSessionId, updateSession]
   )
+
+  const handleLibraryChange = useCallback(
+    async (libraryId: bigint | null) => {
+      // 如果有当前会话，同步更新数据库
+      if (currentSessionId) {
+        await updateSession(currentSessionId, { ragLibraryId: libraryId })
+      }
+    },
+    [currentSessionId, updateSession]
+  )
+
+  // 当会话切换时，恢复知识库选择
+  useEffect(() => {
+    if (currentSessionId) {
+      const session = sessions.find((s) => s.id === currentSessionId)
+      if (session) {
+        selectLibrary(session.ragLibraryId ?? null)
+      }
+    } else {
+      // 没有会话时，重置知识库选择
+      selectLibrary(null)
+    }
+  }, [currentSessionId, sessions, selectLibrary])
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
@@ -312,9 +336,6 @@ export const Chat: React.FC = () => {
 
           <div className="thread-content-max-width mx-auto w-full sticky bottom-0 left-0 right-0">
             <div className="py-4 px-8 bg-background">
-              <div className="mb-3 flex items-center">
-                <RagSelector />
-              </div>
               <ChatInput
                 sendDisabled={!hasConfig}
                 isSending={isSending}
@@ -331,6 +352,8 @@ export const Chat: React.FC = () => {
                 providers={providers}
                 currentProviderId={currentAiProviderId}
                 onProviderChange={handleProviderChange}
+                currentSessionId={currentSessionId}
+                onLibraryChange={handleLibraryChange}
               />
             </div>
           </div>

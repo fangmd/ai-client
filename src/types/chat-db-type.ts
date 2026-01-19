@@ -101,6 +101,7 @@ export type DbChatSession = {
   id: bigint
   title: string
   aiProviderId: bigint
+  ragLibraryId: bigint | null
   createdAt: Date
   updatedAt: Date
 }
@@ -111,6 +112,7 @@ export type DbChatSession = {
 export type CreateChatSessionData = {
   title?: string
   aiProviderId: bigint
+  ragLibraryId?: bigint | null
 }
 
 /**
@@ -119,6 +121,7 @@ export type CreateChatSessionData = {
 export type UpdateChatSessionData = {
   title?: string
   aiProviderId?: bigint
+  ragLibraryId?: bigint | null
 }
 
 // ==================== IPC 传输类型 ====================
@@ -130,6 +133,7 @@ export interface IpcChatSession {
   id: bigint
   title: string
   aiProviderId: bigint
+  ragLibraryId: bigint | null
   createdAt: string
   updatedAt: string
 }

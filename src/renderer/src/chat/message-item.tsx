@@ -39,7 +39,6 @@ const MessageItemComponent: React.FC<Props> = ({ message }) => {
   if (message.role === 'assistant') {
     // 解析并替换引用标记
     const processedContent = parseCitations(message.content)
-    logInfo('processedContent', processedContent)
     
     return (
       <div className="group overflow-hidden" key={message.id}>

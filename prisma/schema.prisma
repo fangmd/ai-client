@@ -33,10 +33,12 @@ model ChatSession {
   id           BigInt   @id
   title        String // 对话标题
   aiProviderId BigInt // 关联的 AI Provider ID（逻辑外键，必填）
+  ragLibraryId BigInt? // 关联的知识库 ID（逻辑外键，可选）
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   @@index([aiProviderId])
+  @@index([ragLibraryId])
   @@index([createdAt])
   @@index([updatedAt])
   @@map("chat_session")

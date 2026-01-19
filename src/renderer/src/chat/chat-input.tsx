@@ -9,6 +9,7 @@ import { ArrowUpIcon, Square, Paperclip } from 'lucide-react'
 import { useState, useRef, type ChangeEvent } from 'react'
 import type { AiProvider, Attachment } from '@/types'
 import { ModelSelector } from './model-selector'
+import { RagSelector } from '@renderer/components/rag/rag-selector'
 import { AttachmentPreview } from './attachment-preview'
 import { selectFiles, uploadFile, isAllowedImageType, logInfo } from '@renderer/utils'
 import { MAX_FILE_SIZE, MAX_ATTACHMENTS } from '@/common/constants/file'
@@ -24,6 +25,9 @@ interface Props {
   providers?: AiProvider[]
   currentProviderId?: bigint | null
   onProviderChange?: (providerId: bigint) => void
+  // 知识库选择相关
+  currentSessionId?: bigint | null
+  onLibraryChange?: (libraryId: bigint | null) => void
 }
 
 export const ChatInput: React.FC<Props> = ({
@@ -34,7 +38,9 @@ export const ChatInput: React.FC<Props> = ({
   resetChat: _resetChat,
   providers = [],
   currentProviderId,
-  onProviderChange
+  onProviderChange,
+  currentSessionId,
+  onLibraryChange
 }) => {
   const [content, setContent] = useState('')
   const [attachments, setAttachments] = useState<Attachment[]>([])
@@ -142,6 +148,12 @@ export const ChatInput: React.FC<Props> = ({
           providers={providers}
           currentProviderId={currentProviderId}
           onProviderChange={onProviderChange}
+        />
+
+        {/* 知识库选择按钮 */}
+        <RagSelector
+          currentSessionId={currentSessionId}
+          onLibraryChange={onLibraryChange}
         />
 
         {/* 文件上传按钮 */}

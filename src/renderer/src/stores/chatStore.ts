@@ -181,7 +181,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   /**
    * 更新会话
    */
-  updateSession: async (id: bigint, data: { title?: string; aiProviderId?: bigint }) => {
+  updateSession: async (id: bigint, data: { title?: string; aiProviderId?: bigint; ragLibraryId?: bigint | null }) => {
     try {
       const response = (await window.electron.ipcRenderer.invoke(
         IPC_CHANNELS.chatSession.update,

@@ -10,7 +10,8 @@ export async function createChatSession(data: CreateChatSessionData): Promise<Db
     data: {
       id: generateUUID().valueOf(),
       title: data.title || 'New Chat',
-      aiProviderId: data.aiProviderId
+      aiProviderId: data.aiProviderId,
+      ragLibraryId: data.ragLibraryId ?? null
     }
   })
 }
@@ -112,7 +113,8 @@ export async function updateChatSession(
     where: { id },
     data: {
       title: data.title,
-      aiProviderId: data.aiProviderId
+      aiProviderId: data.aiProviderId,
+      ragLibraryId: data.ragLibraryId
     }
   })
 }
