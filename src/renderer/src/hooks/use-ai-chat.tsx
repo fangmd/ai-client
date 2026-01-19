@@ -3,6 +3,7 @@ import type { AIConfig, Attachment } from '@/types'
 import type { IPCResponse } from '@/types'
 import { IPC_CHANNELS } from '@/common/constants/ipc'
 import { useChatStore } from '@renderer/stores/chatStore'
+import { useRagStore } from '@renderer/stores/ragStore'
 import { logDebug, logInfo } from '@renderer/utils'
 import { JSONLProcessor } from '@renderer/utils'
 
@@ -40,6 +41,7 @@ export const useAIChat = ({ config, defaultProviderId }: UseAIChatOptions) => {
     registerStopStream,
     unregisterStopStream
   } = useChatStore()
+  const { selectedLibraryId, config: ragConfig } = useRagStore()
 
   const requestIdRef = useRef<string | null>(null)
   const unsubscribeRefs = useRef<Array<() => void>>([])
@@ -505,7 +507,13 @@ export const useAIChat = ({ config, defaultProviderId }: UseAIChatOptions) => {
       messages: messageList,
       config,
       requestId,
-      sessionId
+      sessionId,
+      rag: {
+        enabled: ragConfig.enabled,
+        libraryId: selectedLibraryId,
+        topK: ragConfig.topK,
+        threshold: ragConfig.threshold
+      }
     })
   }
 

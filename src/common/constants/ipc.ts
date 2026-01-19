@@ -76,5 +76,18 @@ export const IPC_CHANNELS = {
     update: 'mcp-config:update',
     // 删除 MCP 配置
     delete: 'mcp-config:delete'
+  },
+  // RAG 模块
+  rag: {
+    createLibrary: 'rag:create-library',
+    listLibraries: 'rag:list-libraries',
+    updateLibrary: 'rag:update-library',
+    deleteLibrary: 'rag:delete-library',
+    uploadDocument: 'rag:upload-document',
+    listDocuments: 'rag:list-documents',
+    deleteDocument: 'rag:delete-document',
+    refreshDocument: 'rag:refresh-document',
+    getDocumentStatus: 'rag:get-document-status',
+    search: 'rag:search'
   }
 } as const

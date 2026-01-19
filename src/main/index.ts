@@ -5,6 +5,7 @@ import icon from '../../resources/icon.png?asset'
 import { registerHandlers, unregisterHandlers } from './handlers'
 import { initializeDatabase, disconnectDatabase } from './common/db/prisma'
 import { initializeLogger, logError, logInfo } from './utils'
+import { initializeRagDatabase, closeRagDatabase } from './utils/rag-db'
 import { initializeMcpClient } from './providers/openai-provider'
 ;(BigInt.prototype as any).toJSON = function () {
   return this.toString()
@@ -90,6 +91,15 @@ if (!gotTheLock) {
       // 数据库初始化失败是致命错误，但仍然继续运行以便用户看到错误信息
     }
 
+    // 第三步：初始化 RAG 数据库
+    try {
+      logInfo('Initializing RAG database...')
+      initializeRagDatabase()
+      logInfo('RAG database initialized successfully')
+    } catch (error) {
+      logError('Failed to initialize RAG database:', error)
+    }
+
     // Default open or close DevTools by F12 in development
     // and ignore CommandOrControl + R in production.
     // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
@@ -97,12 +107,12 @@ if (!gotTheLock) {
       optimizer.watchWindowShortcuts(window)
     })
 
-    // 第三步：注册所有 IPC Handlers（现在可以安全访问数据库了）
+    // 第四步：注册所有 IPC Handlers（现在可以安全访问数据库了）
     logInfo('Registering handlers...')
     registerHandlers()
     logInfo('Handlers registered')
 
-    // 第四步：初始化 MCP 客户端
+    // 第五步：初始化 MCP 客户端
     try {
       logInfo('Initializing MCP client...')
       await initializeMcpClient()
@@ -112,7 +122,7 @@ if (!gotTheLock) {
       // MCP 初始化失败不影响应用启动，继续运行
     }
 
-    // 第五步：创建窗口
+    // 第六步：创建窗口
     createWindow()
 
     app.on('activate', function () {
@@ -136,6 +146,7 @@ app.on('window-all-closed', () => {
 app.on('will-quit', async () => {
   unregisterHandlers()
   await disconnectDatabase()
+  closeRagDatabase()
 })
 
 // In this file you can include the rest of your app's specific main process

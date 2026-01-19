@@ -9,6 +9,13 @@ export default defineConfig({
       alias: {
         '@': resolve('src')
       }
+    },
+    build: {
+      rollupOptions: {
+        input: {
+          index: resolve('src/main/index.ts')
+        }
+      }
     }
   },
   preload: {},

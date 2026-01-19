@@ -5,6 +5,7 @@ import { MessageHandler } from './message-handler'
 import { ConfigHandler } from './config-handler'
 import { FileHandler } from './file-handler'
 import { McpConfigHandler } from './mcp-config-handler'
+import { RagHandler } from './rag-handler'
 
 /**
  * 统一注册所有 IPC Handlers
@@ -17,6 +18,7 @@ export function registerHandlers(): void {
   ConfigHandler.register()
   FileHandler.register()
   McpConfigHandler.register()
+  RagHandler.register()
 }
 
 /**
@@ -30,4 +32,5 @@ export function unregisterHandlers(): void {
   ConfigHandler.unregister()
   FileHandler.unregister()
   McpConfigHandler.unregister()
+  RagHandler.unregister()
 }

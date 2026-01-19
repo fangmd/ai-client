@@ -4,6 +4,7 @@ import { MessageItem } from '@renderer/chat/message-item'
 import '@renderer/assets/chat.css'
 import { ChatInput } from '@renderer/chat/chat-input'
 import { LoadingAnimation } from '@renderer/components/loading'
+import { RagSelector } from '@renderer/components/rag/rag-selector'
 import type { AIConfig, Attachment, AiProvider } from '@/types'
 import { useChatStore } from '@renderer/stores/chatStore'
 import { useAiProviderStore } from '@renderer/stores/ai-provider-store'
@@ -311,6 +312,9 @@ export const Chat: React.FC = () => {
 
           <div className="thread-content-max-width mx-auto w-full sticky bottom-0 left-0 right-0">
             <div className="py-4 px-8 bg-background">
+              <div className="mb-3 flex items-center">
+                <RagSelector />
+              </div>
               <ChatInput
                 sendDisabled={!hasConfig}
                 isSending={isSending}

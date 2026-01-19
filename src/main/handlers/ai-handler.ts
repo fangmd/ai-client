@@ -3,6 +3,10 @@ import { IPC_CHANNELS } from '@/common/constants'
 import { responseSuccess, responseError } from '@/common/response'
 import { AIProviderFactory } from '@/main/providers'
 import { logInfo, logError, logDebug } from '@/main/utils'
+import { runWorkerTask } from '@/main/utils/worker-manager'
+import { searchHybrid } from '@/main/utils/hybrid-search'
+import { getRagDatabase } from '@/main/utils/rag-db'
+import { getRagChunksByIds } from '@/main/repository/rag-chunk'
 import type { ToolCallInfo, StreamChatRequest, CancelChatRequest, AIMessageInput } from '@/types'
 import { createMessage, updateMessage, getMessageById } from '@/main/repository/message'
 import { getConfig } from '@/main/repository/config'
@@ -12,6 +16,80 @@ import { isA2UIMessage, extractA2UIJSON, A2UI_BEGIN_MARKER } from '@/main/utils/
  * 存储活跃的请求，用于取消功能
  */
 const activeRequests = new Map<string, AbortController>()
+
+const DEFAULT_RAG_TOP_K = 5
+const DEFAULT_RAG_THRESHOLD = 0.2
+const RAG_SNIPPET_MAX_LENGTH = 800
+
+async function buildRagContext(options: {
+  query: string
+  libraryId: bigint
+  topK?: number
+  threshold?: number
+}): Promise<string | null> {
+  const embeddings = (await runWorkerTask({
+    type: 'embedTexts',
+    payload: { texts: [options.query] }
+  })) as Float32Array[]
+
+  const results = searchHybrid(
+    { text: options.query, embedding: embeddings[0] },
+    { topK: options.topK ?? DEFAULT_RAG_TOP_K }
+  ).filter((item) => item.score >= (options.threshold ?? DEFAULT_RAG_THRESHOLD))
+
+  if (results.length === 0) return null
+
+  const chunkIds = results.map((item) => item.chunkId)
+  const chunks = getRagChunksByIds(chunkIds)
+  const chunkMap = new Map(chunks.map((chunk) => [chunk.id, chunk]))
+
+  const db = getRagDatabase()
+  const placeholders = chunkIds.map(() => '?').join(',')
+  const rows =
+    chunkIds.length > 0
+      ? db
+          .prepare(
+            `
+            SELECT rag_chunk.id as chunk_id,
+                   rag_document.id as document_id,
+                   rag_document.library_id as library_id,
+                   rag_document.file_name as file_name,
+                   rag_document.file_path as file_path
+            FROM rag_chunk
+            JOIN rag_document ON rag_chunk.document_id = rag_document.id
+            WHERE rag_chunk.id IN (${placeholders})
+              AND rag_document.library_id = ?
+          `
+          )
+          .all(...chunkIds, options.libraryId)
+      : []
+
+  const docMap = new Map<bigint, { fileName: string; filePath: string }>()
+  for (const row of rows) {
+    docMap.set(row.chunk_id, {
+      fileName: row.file_name,
+      filePath: row.file_path
+    })
+  }
+
+  const snippets = results
+    .map((result, index) => {
+      const chunk = chunkMap.get(result.chunkId)
+      const doc = docMap.get(result.chunkId)
+      if (!chunk || !doc) return null
+      const content = chunk.content.trim().slice(0, RAG_SNIPPET_MAX_LENGTH)
+      const metadata =
+        chunk.metadata && typeof chunk.metadata === 'object'
+          ? ` (行 ${chunk.metadata.startLine ?? '?'}-${chunk.metadata.endLine ?? '?'})`
+          : ''
+      return `[${index + 1}] ${doc.fileName}${metadata}\n${content}`
+    })
+    .filter(Boolean)
+
+  if (snippets.length === 0) return null
+
+  return `以下是检索到的参考内容，请结合引用编号回答：\n\n${snippets.join('\n\n')}`
+}
 
 /**
  * AI Handler
@@ -24,7 +102,7 @@ export class AIHandler {
   static register(): void {
     // 流式聊天请求处理
     ipcMain.on(IPC_CHANNELS.ai.streamChat, async (event, request: StreamChatRequest) => {
-      const { messages, config, requestId, tools, sessionId } = request
+      const { messages, config, requestId, tools, sessionId, rag } = request
 
       // 默认启用 terminal 工具和 read 工具
       const finalTools: string[] = tools ? [...tools] : []
@@ -68,10 +146,32 @@ export class AIHandler {
         const systemPromptConfig = await getConfig('system_prompt')
         const systemPrompt = systemPromptConfig?.value || ''
 
-        // 如果系统提示词不为空，添加到消息列表开头
-        const finalMessages: AIMessageInput[] = systemPrompt.trim()
-          ? [{ role: 'system', content: systemPrompt.trim() }, ...messages]
-          : messages
+        // 构建 RAG 上下文
+        let ragContext: string | null = null
+        if (rag?.enabled && rag.libraryId) {
+          const lastUserMessage = [...messages].reverse().find((msg) => msg.role === 'user')
+          if (lastUserMessage?.content) {
+            ragContext = await buildRagContext({
+              query: lastUserMessage.content,
+              libraryId: rag.libraryId,
+              topK: rag.topK,
+              threshold: rag.threshold
+            })
+          }
+        }
+
+        const systemPromptMessage = systemPrompt.trim()
+          ? ({ role: 'system', content: systemPrompt.trim() } as AIMessageInput)
+          : null
+        const ragContextMessage = ragContext
+          ? ({ role: 'system', content: ragContext } as AIMessageInput)
+          : null
+
+        const finalMessages: AIMessageInput[] = [
+          ...(systemPromptMessage ? [systemPromptMessage] : []),
+          ...(ragContextMessage ? [ragContextMessage] : []),
+          ...messages
+        ]
 
         logDebug('【IPC Handler】System prompt injected', {
           hasSystemPrompt: !!systemPrompt.trim(),

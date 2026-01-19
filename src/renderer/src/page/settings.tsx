@@ -3,6 +3,7 @@ import { Button } from '@renderer/components/ui/button'
 import { AiModelList } from '@renderer/components/AiModelList'
 import { SystemPromptSettings } from '@renderer/components/SystemPromptSettings'
 import { McpConfigList } from '@renderer/components/McpConfigList'
+import { RagLibrarySettings } from '@renderer/components/RagLibrarySettings'
 import { Sun, Moon, Monitor, Check } from 'lucide-react'
 import type { ThemeMode } from '@/types'
 
@@ -61,6 +62,9 @@ export const SettingsPage: React.FC = () => {
 
         {/* MCP 服务器配置 */}
         <McpConfigList />
+
+        {/* 知识库管理 */}
+        <RagLibrarySettings />
       </div>
     </div>
   )

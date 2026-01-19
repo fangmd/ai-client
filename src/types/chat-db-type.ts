@@ -164,6 +164,12 @@ export interface StreamChatRequest {
   requestId: string
   sessionId: bigint
   tools?: ToolType[]
+  rag?: {
+    enabled?: boolean
+    libraryId?: bigint | null
+    topK?: number
+    threshold?: number
+  }
 }
 
 /**

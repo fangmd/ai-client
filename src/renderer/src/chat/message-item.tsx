@@ -8,6 +8,7 @@ import type { DbMessageWithAttachments, Attachment } from '@/types'
 import { ToolCallItem } from './tool-call-item'
 import { getFileDataUri } from '@renderer/utils/file'
 import { logDebug, logError, logInfo } from '@renderer/utils'
+import { parseCitations } from '@renderer/utils/citation-parser'
 import { A2UI } from '../a2ui/render'
 import { Types } from '@a2ui/react'
 interface Props {
@@ -36,10 +37,14 @@ const MessageItemComponent: React.FC<Props> = ({ message }) => {
   }
 
   if (message.role === 'assistant') {
+    // 解析并替换引用标记
+    const processedContent = parseCitations(message.content)
+    logInfo('processedContent', processedContent)
+    
     return (
       <div className="group overflow-hidden" key={message.id}>
         <div className={clsx('markdown-body', 'w-full overflow-hidden')}>
-          <Streamdown isAnimating={message.status === 'sending'}>{message.content}</Streamdown>
+          <Streamdown isAnimating={message.status === 'sending'}>{processedContent}</Streamdown>
         </div>
         <div className="flex justify-start ml-2 py-1 opacity-0 pointer-events-none transition-opacity delay-[2000ms] group-hover:opacity-100 group-hover:pointer-events-auto group-hover:delay-0">
           <Button

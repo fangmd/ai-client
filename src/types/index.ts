@@ -13,3 +13,4 @@ export * from './ipc-type'
 
 // 技能类型
 export * from './skill-type'
+export * from './rag-type'
