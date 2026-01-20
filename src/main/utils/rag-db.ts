@@ -82,6 +82,18 @@ function createRagTables(db: Database.Database): void {
     );
   `)
 
+  // 创建索引以优化查询性能
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_rag_document_library_id 
+    ON rag_document(library_id);
+    
+    CREATE INDEX IF NOT EXISTS idx_rag_document_status 
+    ON rag_document(status);
+    
+    CREATE INDEX IF NOT EXISTS idx_rag_chunk_document_id 
+    ON rag_chunk(document_id);
+  `)
+
   db.exec(`
     CREATE TRIGGER IF NOT EXISTS rag_chunk_ai
     AFTER INSERT ON rag_chunk
