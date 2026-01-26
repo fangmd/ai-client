@@ -1,7 +1,7 @@
 # mcp Specification
 
 ## Purpose
-TBD - created by archiving change add-mcp-configuration. Update Purpose after archive.
+MCP（Model Context Protocol）配置管理功能允许用户通过设置界面管理 MCP 服务器配置，包括添加、编辑、删除和启用/禁用 MCP 服务器。配置存储在数据库中，应用启动时自动加载并连接启用的 MCP 服务器，使 MCP 工具在 AI 对话中可用。这消除了硬编码配置的限制，用户无需修改代码即可使用自定义 MCP 服务器。
 ## Requirements
 ### Requirement: MCP 配置管理
 系统 MUST 允许用户通过设置界面管理 MCP 服务器配置，包括添加、编辑、删除和启用/禁用 MCP 服务器。

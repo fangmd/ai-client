@@ -1,7 +1,7 @@
 # rag Specification
 
 ## Purpose
-TBD - created by archiving change add-rag-feature. Update Purpose after archive.
+RAG（Retrieval-Augmented Generation）功能允许用户基于本地文档进行 AI 对话，确保数据隐私（使用本地 Embedding 时），并提供引用溯源能力。系统支持创建和管理多个知识库，上传文档（Markdown、TXT）并自动进行解析、切片和向量化，在对话中基于知识库内容增强 AI 回答，并提供引用标记以便用户查看原始文档片段。所有向量计算和文档存储均在本地完成，数据不离开本地环境。
 ## Requirements
 ### Requirement: 知识库管理
 
